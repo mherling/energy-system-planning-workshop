@@ -26,8 +26,10 @@ import yaml
 def main():
     # Choose configuration file to run model with
     exp_cfg_file_name = 'config.yml'
-    config_file_path = os.path.abspath(
-        '../experiment_config/' + exp_cfg_file_name)
+    # Get the directory of the current script and construct path relative to it
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    config_file_path = os.path.join(script_dir, '..', 'experiment_config', exp_cfg_file_name)
+    config_file_path = os.path.abspath(config_file_path)
     with open(config_file_path, 'r') as ymlfile:
         cfg = yaml.load(ymlfile, Loader=yaml.CLoader)
 

@@ -28,7 +28,14 @@ def my_detailed_analysis(config_file_path, plot_results=True):
         if n == cfg['number_of_teams']-1:
             print('S i m u l a t i o n  f i n i s h e d !')
 
-    teamdata.to_csv('../results/optimisation_results/tables/results.csv')
+    # Create results directory with absolute path
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    results_dir = os.path.join(script_dir, '..', 'results', 'optimisation_results', 'tables')
+    results_dir = os.path.abspath(results_dir)
+    os.makedirs(results_dir, exist_ok=True)
+    
+    results_file = os.path.join(results_dir, 'results.csv')
+    teamdata.to_csv(results_file)
 
     if plot_results:
             plot_team_results(config_path=config_file_path,
@@ -371,4 +378,12 @@ def plot_team_results(config_path, df_basic_results_and_team_decision):
                     arrowprops=dict(
                         arrowstyle='->',
                         connectionstyle='arc3,rad=0'))
-    plt.savefig('../results/plots/results.png', dpi=300)
+    
+    # Create plots directory with absolute path
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    plots_dir = os.path.join(script_dir, '..', 'results', 'plots')
+    plots_dir = os.path.abspath(plots_dir)
+    os.makedirs(plots_dir, exist_ok=True)
+    
+    plot_file = os.path.join(plots_dir, 'results.png')
+    plt.savefig(plot_file, dpi=300)

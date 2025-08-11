@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energy System Planning Workshop</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .team-card {
+            transition: all 0.3s ease;
+            border-left: 4px solid #007bff;
+        }
+        .team-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .simulation-status {
+            font-size: 0.8em;
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+        }
+        .status-idle { background-color: #6c757d; color: white; }
+        .status-running { background-color: #ffc107; color: black; }
+        .status-completed { background-color: #198754; color: white; }
+        .status-error { background-color: #dc3545; color: white; }
+        .parameter-input {
+            max-width: 120px;
+        }
+        .chart-container {
+            height: 300px;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-lightning-charge"></i>
+                Energy System Planning Workshop
+            </a>
+            <div class="navbar-nav d-flex flex-row gap-2">
+                <button class="btn btn-outline-light" onclick="reloadFromCSV()">
+                    <i class="bi bi-arrow-clockwise"></i> Daten neu laden
+                </button>
+                <button class="btn btn-outline-light" onclick="runAllSimulations()">
+                    <i class="bi bi-play-circle"></i> Alle Teams berechnen
+                </button>
+                <button class="btn btn-outline-light" onclick="runSelectedSimulations()">
+                    <i class="bi bi-check-square"></i> Ausgewählte berechnen
+                </button>
+                <button class="btn btn-outline-light" onclick="showComparison()">
+                    <i class="bi bi-bar-chart"></i> Vergleich anzeigen
+                </button>
+                <button class="btn btn-outline-light" onclick="showParameters()">
+                    <i class="bi bi-gear"></i> Randbedingungen
+                </button>
+                <button class="btn btn-outline-light" onclick="showTimeSeries()">
+                    <i class="bi bi-graph-up-arrow"></i> Zeitreihendaten
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Teams Overview -->
+        <div class="row" id="teams-container">
+            <!-- Teams will be loaded here -->
+        </div>
+
+        <!-- Comparison Modal -->
+        <div class="modal fade" id="comparisonModal" tabindex="-1">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="bi bi-bar-chart"></i> Erweiterte Variantenanalyse
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Navigation Tabs -->
+                        <ul class="nav nav-tabs mb-3" id="comparisonTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab">
+                                    <i class="bi bi-table"></i> Übersicht
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="charts-tab" data-bs-toggle="tab" data-bs-target="#charts" type="button" role="tab">
+                                    <i class="bi bi-graph-up"></i> Diagramme
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="detailed-tab" data-bs-toggle="tab" data-bs-target="#detailed" type="button" role="tab">
+                                    <i class="bi bi-list-ul"></i> Detaildaten
+                                </button>
+                            </li>
+                        </ul>
+                        
+                        <!-- Tab Content -->
+                        <div class="tab-content" id="comparisonTabContent">
+                            <!-- Overview Tab -->
+                            <div class="tab-pane fade show active" id="overview" role="tabpanel">
+                                <div id="comparison-overview">
+                                    <!-- Main KPIs will be loaded here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Charts Tab -->
+                            <div class="tab-pane fade" id="charts" role="tabpanel">
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Kennzahl auswählen:</label>
+                                        <select class="form-select" id="chartMetricSelect" onchange="updateChart()">
+                                            <optgroup label="Hauptkennzahlen">
+                                                <option value="costs">Energiekosten</option>
+                                                <option value="emissions">CO₂-Emissionen</option>
+                                                <option value="selfsufficiency">Selbstversorgung gesamt</option>
+                                            </optgroup>
+                                            <optgroup label="Kosten">
+                                                <option value="cost invest">Investitionskosten</option>
+                                                <option value="cost operation">Betriebskosten</option>
+                                            </optgroup>
+                                            <optgroup label="Selbstversorgung">
+                                                <option value="selfsufficiency electric">Selbstversorgung Strom</option>
+                                                <option value="selfsufficiency heat">Selbstversorgung Wärme</option>
+                                            </optgroup>
+                                            <optgroup label="Technologien">
+                                                <option value="chps">BHKWs</option>
+                                                <option value="boilers">Kessel</option>
+                                                <option value="windturbines">Windturbinen</option>
+                                                <option value="heatpumps">Wärmepumpen</option>
+                                                <option value="PV">Photovoltaik</option>
+                                                <option value="solarthermal">Solarthermie</option>
+                                            </optgroup>
+                                            <optgroup label="Speicher">
+                                                <option value="EES">Elektrischer Speicher</option>
+                                                <option value="TES">Thermischer Speicher</option>
+                                            </optgroup>
+                                            <optgroup label="Energiebilanz">
+                                                <option value="total el demand">Strombedarf</option>
+                                                <option value="total el production">Stromproduktion</option>
+                                                <option value="total el purchase">Strombezug</option>
+                                                <option value="total heat demand">Wärmebedarf</option>
+                                                <option value="total heat production">Wärmeproduktion</option>
+                                                <option value="total heat purchase">Wärmebezug</option>
+                                            </optgroup>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Diagrammtyp:</label>
+                                        <select class="form-select" id="chartTypeSelect" onchange="updateChart()">
+                                            <option value="bar">Balkendiagramm</option>
+                                            <option value="pie">Tortendiagramm</option>
+                                            <option value="radar">Netzdiagramm</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div id="comparison-chart" style="height: 500px;">
+                                    <!-- Chart will be rendered here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Detailed Data Tab -->
+                            <div class="tab-pane fade" id="detailed" role="tabpanel">
+                                <div class="mb-3">
+                                    <button class="btn btn-success btn-sm" onclick="downloadCSV()">
+                                        <i class="bi bi-download"></i> Vollständige Daten (CSV)
+                                    </button>
+                                </div>
+                                <div id="comparison-detailed">
+                                    <!-- Detailed comparison table will be loaded here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Parameters Modal -->
+    <div class="modal fade" id="parametersModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-gear"></i> Randbedingungen (Allgemeine Parameter)
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <button class="btn btn-success" onclick="saveParameters()">
+                            <i class="bi bi-floppy"></i> Parameter speichern
+                        </button>
+                        <button class="btn btn-secondary" onclick="resetParameters()">
+                            <i class="bi bi-arrow-clockwise"></i> Zurücksetzen
+                        </button>
+                    </div>
+                    <div id="parameters-content">
+                        <!-- Parameters table will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Time Series Modal -->
+    <div class="modal fade" id="timeSeriesModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-graph-up-arrow"></i> Zeitreihendaten (Lastgänge & Erzeugung)
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Variable auswählen:</label>
+                            <select class="form-select" id="timeSeriesVariableSelect" onchange="updateTimeSeries()">
+                                <option value="Demand_el [MWh]">Strombedarf</option>
+                                <option value="Demand_th [MWh]">Wärmebedarf</option>
+                                <option value="Sol_irradiation [Wh/sqm]">Solarstrahlung</option>
+                                <option value="Wind_power [kW/unit]">Windleistung</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Zeitraum:</label>
+                            <select class="form-select" id="timeRangeSelect" onchange="updateTimeSeries()">
+                                <option value="week">Woche (168h)</option>
+                                <option value="month">Monat (720h)</option>
+                                <option value="season">Jahreszeit (2160h)</option>
+                                <option value="year">Ganzes Jahr</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Startpunkt:</label>
+                            <input type="number" class="form-control" id="startHourInput" value="1" min="1" max="8760" onchange="updateTimeSeries()">
+                        </div>
+                    </div>
+                    <div id="timeseries-chart" style="height: 500px;">
+                        <!-- Time series chart will be rendered here -->
+                    </div>
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <strong>Datenquelle:</strong> DAT_Energie-Workshop.CSV (8760 Stunden Jahresverlauf)
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script>
+        // Global variables
+        let teams = [];
+        let websocket = null;
+
+        // Initialize WebSocket connection
+        function initWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            websocket = new WebSocket(`${protocol}//${window.location.host}/ws`);
+            
+            websocket.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+            };
+            
+            websocket.onclose = function() {
+                console.log('WebSocket connection closed');
+                // Reconnect after 3 seconds
+                setTimeout(initWebSocket, 3000);
+            };
+        }
+
+        // Handle WebSocket messages
+        function handleWebSocketMessage(data) {
+            if (data.type === 'simulation_started') {
+                updateTeamStatus(data.team_id, 'running');
+            } else if (data.type === 'simulation_completed') {
+                updateTeamStatus(data.team_id, 'completed');
+                loadTeams(); // Reload to get results
+            } else if (data.type === 'simulation_error') {
+                updateTeamStatus(data.team_id, 'error');
+                alert(`Simulation error for Team ${data.team_id}: ${data.error}`);
+            }
+        }
+
+        // Update team status in UI
+        function updateTeamStatus(teamId, status) {
+            const statusElement = document.querySelector(`#team-${teamId} .simulation-status`);
+            if (statusElement) {
+                statusElement.className = `simulation-status status-${status}`;
+                statusElement.textContent = getStatusText(status);
+            }
+        }
+
+        // Get status text
+        function getStatusText(status) {
+            const texts = {
+                'idle': 'Bereit',
+                'running': 'Läuft...',
+                'completed': 'Abgeschlossen',
+                'error': 'Fehler'
+            };
+            return texts[status] || status;
+        }
+
+        // Load teams from API
+        async function loadTeams() {
+            try {
+                const response = await fetch('/api/teams');
+                const data = await response.json();
+                teams = data.teams;
+                renderTeams();
+            } catch (error) {
+                console.error('Error loading teams:', error);
+            }
+        }
+
+        // Render teams in the UI
+        function renderTeams() {
+            const container = document.getElementById('teams-container');
+            container.innerHTML = '';
+
+            teams.forEach(team => {
+                const teamCard = createTeamCard(team);
+                container.appendChild(teamCard);
+            });
+        }
+
+        // Create team card element
+        function createTeamCard(team) {
+            const col = document.createElement('div');
+            col.className = 'col-md-6 col-lg-4 mb-4';
+
+            col.innerHTML = `
+                <div class="card team-card h-100" id="team-${team.id}">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <input type="checkbox" class="form-check-input me-2" name="team-select" value="${team.id}">
+                            <h5 class="mb-0">${team.name}</h5>
+                        </div>
+                        <span class="simulation-status status-${team.simulation_status}">
+                            ${getStatusText(team.simulation_status)}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <form id="team-form-${team.id}">
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="form-label small">Windkraftanlagen</label>
+                                    <input type="number" class="form-control parameter-input" 
+                                           name="windturbines" value="${team.parameters.windturbines}" min="0" max="10">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small">BHKW</label>
+                                    <input type="number" class="form-control parameter-input" 
+                                           name="chps" value="${team.parameters.chps}" min="0" max="10">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small">Kessel</label>
+                                    <input type="number" class="form-control parameter-input" 
+                                           name="boilers" value="${team.parameters.boilers}" min="0" max="10">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small">PV-Anlagen</label>
+                                    <input type="number" class="form-control parameter-input" 
+                                           name="pv_plants" value="${team.parameters.pv_plants}" min="0" max="10">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small">Wärmepumpen</label>
+                                    <input type="number" class="form-control parameter-input" 
+                                           name="heat_pumps" value="${team.parameters.heat_pumps}" min="0" max="10">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small">PV-Fläche (ha)</label>
+                                    <input type="number" class="form-control parameter-input" 
+                                           name="pv_area" value="${team.parameters.pv_area}" min="0" max="100" step="0.1">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small">Solarthermie (ha)</label>
+                                    <input type="number" class="form-control parameter-input" 
+                                           name="solar_thermal_area" value="${team.parameters.solar_thermal_area}" min="0" max="100" step="0.1">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small">Stromspeicher</label>
+                                    <input type="number" class="form-control parameter-input" 
+                                           name="electrical_storage" value="${team.parameters.electrical_storage}" min="0" max="10" step="0.1">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small">Wärmespeicher</label>
+                                    <input type="number" class="form-control parameter-input" 
+                                           name="thermal_storage" value="${team.parameters.thermal_storage}" min="0" max="10" step="0.1">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="card-footer">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary btn-sm" onclick="updateTeamConfig(${team.id})"
+                                    ${team.simulation_status === 'running' ? 'disabled' : ''}>
+                                <i class="bi bi-save"></i> Konfiguration speichern
+                            </button>
+                            <button class="btn btn-success btn-sm" onclick="runSimulation(${team.id})"
+                                    ${team.simulation_status === 'running' ? 'disabled' : ''}>
+                                <i class="bi bi-play-circle"></i> Simulation starten
+                            </button>
+                            ${team.simulation_status === 'completed' ? `
+                                <button class="btn btn-info btn-sm" onclick="showResults(${team.id})">
+                                    <i class="bi bi-graph-up"></i> Ergebnisse anzeigen
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            return col;
+        }
+
+        // Update team configuration
+        async function updateTeamConfig(teamId) {
+            const form = document.getElementById(`team-form-${teamId}`);
+            const formData = new FormData(form);
+            const config = {};
+            
+            for (let [key, value] of formData.entries()) {
+                config[key] = parseFloat(value) || 0;
+            }
+
+            try {
+                const response = await fetch(`/api/teams/${teamId}/config`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(config)
+                });
+
+                if (response.ok) {
+                    showToast('Konfiguration gespeichert!', 'success');
+                } else {
+                    showToast('Fehler beim Speichern!', 'error');
+                }
+            } catch (error) {
+                console.error('Error updating team config:', error);
+                showToast('Fehler beim Speichern!', 'error');
+            }
+        }
+
+        // Run simulation
+        async function runSimulation(teamId) {
+            try {
+                const response = await fetch(`/api/teams/${teamId}/simulate`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    showToast('Simulation gestartet!', 'info');
+                    updateTeamStatus(teamId, 'running');
+                } else {
+                    showToast('Fehler beim Starten der Simulation!', 'error');
+                }
+            } catch (error) {
+                console.error('Error running simulation:', error);
+                showToast('Fehler beim Starten der Simulation!', 'error');
+            }
+        }
+
+        // Show results
+        async function showResults(teamId) {
+            try {
+                const response = await fetch(`/api/teams/${teamId}/results`);
+                const results = await response.json();
+                
+                // Create results modal
+                showResultsModal(teamId, results);
+            } catch (error) {
+                console.error('Error loading results:', error);
+                showToast('Fehler beim Laden der Ergebnisse!', 'error');
+            }
+        }
+
+        // Show results modal
+        function showResultsModal(teamId, results) {
+            const modalHtml = `
+                <div class="modal fade" id="resultsModal" tabindex="-1">
+                    <div class="modal-dialog modal-xl">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Detaillierte Ergebnisse für ${results.team_name || `Team ${teamId}`}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <!-- Main KPIs -->
+                                <div class="row mb-4">
+                                    <div class="col-md-4 text-center">
+                                        <h3 class="text-primary">${results.energy_cost}€</h3>
+                                        <p>Energiekosten (Mio. €/a)</p>
+                                    </div>
+                                    <div class="col-md-4 text-center">
+                                        <h3 class="text-warning">${results.co2_emissions}t</h3>
+                                        <p>CO₂-Emissionen (t/a)</p>
+                                    </div>
+                                    <div class="col-md-4 text-center">
+                                        <h3 class="text-success">${results.renewable_share}%</h3>
+                                        <p>Selbstversorgung</p>
+                                    </div>
+                                </div>
+                                
+                                ${results.cost_breakdown ? `
+                                <!-- Cost Breakdown -->
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <h6>Kostenaufteilung</h6>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="card">
+                                                    <div class="card-body text-center">
+                                                        <h5 class="text-info">${results.cost_breakdown.investment}€</h5>
+                                                        <p class="mb-0">Investitionskosten (Mio. €/a)</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="card">
+                                                    <div class="card-body text-center">
+                                                        <h5 class="text-info">${results.cost_breakdown.operation}€</h5>
+                                                        <p class="mb-0">Betriebskosten (Mio. €/a)</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                ` : ''}
+                                
+                                ${results.technology_mix ? `
+                                <!-- Technology Mix -->
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <h6>Technologie-Mix</h6>
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <small>KWK-Anlagen: <strong>${results.technology_mix.chps}</strong></small><br>
+                                                <small>Kessel: <strong>${results.technology_mix.boilers}</strong></small>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small>Windkraft: <strong>${results.technology_mix.windturbines}</strong></small><br>
+                                                <small>Wärmepumpen: <strong>${results.technology_mix.heat_pumps}</strong></small>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small>PV-Anlagen: <strong>${results.technology_mix.pv_plants}</strong></small><br>
+                                                <small>Solarthermie: <strong>${results.technology_mix.solar_thermal}</strong></small>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small>Stromspeicher: <strong>${results.technology_mix.electrical_storage}</strong></small><br>
+                                                <small>Wärmespeicher: <strong>${results.technology_mix.thermal_storage}</strong></small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                ` : ''}
+                                
+                                ${results.self_sufficiency_detailed ? `
+                                <!-- Self Sufficiency Details -->
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <h6>Selbstversorgung im Detail</h6>
+                                        <div class="row">
+                                            <div class="col-md-4 text-center">
+                                                <div class="card bg-light">
+                                                    <div class="card-body">
+                                                        <h5 class="text-primary">${results.self_sufficiency_detailed.electrical}%</h5>
+                                                        <p class="mb-0">Elektrisch</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4 text-center">
+                                                <div class="card bg-light">
+                                                    <div class="card-body">
+                                                        <h5 class="text-danger">${results.self_sufficiency_detailed.thermal}%</h5>
+                                                        <p class="mb-0">Thermisch</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4 text-center">
+                                                <div class="card bg-success text-white">
+                                                    <div class="card-body">
+                                                        <h5>${results.self_sufficiency_detailed.total}%</h5>
+                                                        <p class="mb-0">Gesamt</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                ` : ''}
+                                
+                                ${results.energy_balance ? `
+                                <!-- Energy Balance -->
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>Strombilanz (MWh/a)</h6>
+                                        <table class="table table-sm">
+                                            <tr><td>Bedarf:</td><td class="text-end">${results.energy_balance.electricity.demand}</td></tr>
+                                            <tr><td>Erzeugung:</td><td class="text-end text-success">${results.energy_balance.electricity.production}</td></tr>
+                                            <tr><td>Zukauf:</td><td class="text-end text-warning">${results.energy_balance.electricity.purchase}</td></tr>
+                                            <tr><td>Überschuss:</td><td class="text-end text-info">${results.energy_balance.electricity.excess}</td></tr>
+                                        </table>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>Wärmebilanz (MWh/a)</h6>
+                                        <table class="table table-sm">
+                                            <tr><td>Bedarf:</td><td class="text-end">${results.energy_balance.heat.demand}</td></tr>
+                                            <tr><td>Erzeugung:</td><td class="text-end text-success">${results.energy_balance.heat.production}</td></tr>
+                                            <tr><td>Zukauf:</td><td class="text-end text-warning">${results.energy_balance.heat.purchase}</td></tr>
+                                            <tr><td>Überschuss:</td><td class="text-end text-info">${results.energy_balance.heat.excess}</td></tr>
+                                        </table>
+                                    </div>
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            const modal = new bootstrap.Modal(document.getElementById('resultsModal'));
+            modal.show();
+            
+            // Remove modal when hidden
+            document.getElementById('resultsModal').addEventListener('hidden.bs.modal', function () {
+                this.remove();
+            });
+        }
+
+        // Show comparison
+        async function showComparison() {
+            try {
+                // Load both basic comparison and detailed CSV data
+                const [comparisonResponse, csvResponse] = await Promise.all([
+                    fetch('/api/compare'),
+                    fetch('/api/compare/csv-data')
+                ]);
+                
+                const comparisonData = await comparisonResponse.json();
+                const csvData = await csvResponse.json();
+                
+                const modal = new bootstrap.Modal(document.getElementById('comparisonModal'));
+                
+                // Store data globally for chart updates
+                window.comparisonTeams = comparisonData.teams;
+                window.csvData = csvData;
+                
+                // Render all sections
+                renderComparisonOverview(comparisonData.teams);
+                renderDetailedComparison(csvData);
+                updateChart(); // Initialize with default chart
+                
+                modal.show();
+            } catch (error) {
+                console.error('Error loading comparison:', error);
+                showToast('danger', 'Fehler beim Laden des Vergleichs!');
+            }
+        }
+
+        // Render comparison overview (main KPIs)
+        function renderComparisonOverview(teams) {
+            const container = document.getElementById('comparison-overview');
+            
+            if (teams.length === 0) {
+                container.innerHTML = '<p class="text-center">Noch keine Simulationsergebnisse verfügbar.</p>';
+                return;
+            }
+
+            let html = `
+                <div class="mb-3">
+                    <button class="btn btn-success btn-sm" onclick="downloadCSV()">
+                        <i class="bi bi-download"></i> CSV herunterladen
+                    </button>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h6>Hauptkennzahlen im Vergleich</h6>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Team</th>
+                                        <th>Energiekosten<br><small class="text-muted">(Mio. €/a)</small></th>
+                                        <th>CO₂-Emissionen<br><small class="text-muted">(t/a)</small></th>
+                                        <th>Selbstversorgung<br><small class="text-muted">(%)</small></th>
+                                        <th>Renewable Share<br><small class="text-muted">(%)</small></th>
+                                    </tr>
+                                </thead>
+                                <tbody>`;
+
+            teams.forEach(team => {
+                html += `
+                    <tr>
+                        <td><strong>${team.team_name}</strong></td>
+                        <td class="text-primary">${team.energy_cost}</td>
+                        <td class="text-warning">${team.co2_emissions}</td>
+                        <td class="text-success">${team.renewable_share}%</td>
+                        <td class="text-info">${team.renewable_share}%</td>
+                    </tr>`;
+            });
+
+            html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>`;
+
+            container.innerHTML = html;
+        }
+
+        // Render detailed comparison from CSV data
+        function renderDetailedComparison(csvData) {
+            const container = document.getElementById('comparison-detailed');
+            
+            if (!csvData || csvData.length === 0) {
+                container.innerHTML = '<p class="text-center">Keine detaillierten Daten verfügbar.</p>';
+                return;
+            }
+
+            // Get all columns except team name
+            const columns = Object.keys(csvData[0]).filter(key => key !== 'team name');
+            
+            let html = `
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover table-sm">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Team</th>`;
+            
+            columns.forEach(col => {
+                html += `<th>${col}</th>`;
+            });
+            
+            html += `</tr></thead><tbody>`;
+
+            csvData.forEach(row => {
+                html += `<tr><td><strong>${row['team name'] || 'Unbekannt'}</strong></td>`;
+                columns.forEach(col => {
+                    const value = row[col];
+                    const numValue = parseFloat(value);
+                    if (!isNaN(numValue)) {
+                        html += `<td>${numValue.toFixed(2)}</td>`;
+                    } else {
+                        html += `<td>${value || '-'}</td>`;
+                    }
+                });
+                html += `</tr>`;
+            });
+
+            html += `</tbody></table></div>`;
+            container.innerHTML = html;
+        }
+
+        // Update chart based on selected metric and type
+        function updateChart() {
+            const metric = document.getElementById('chartMetricSelect').value;
+            const chartType = document.getElementById('chartTypeSelect').value;
+            
+            if (!window.csvData || window.csvData.length === 0) {
+                document.getElementById('comparison-chart').innerHTML = '<p class="text-center">Keine Daten für Diagramm verfügbar.</p>';
+                return;
+            }
+
+            const teams = window.csvData.map(row => row['team name'] || 'Unbekannt');
+            const values = window.csvData.map(row => parseFloat(row[metric]) || 0);
+            
+            // Define metric labels and units
+            const metricInfo = {
+                'costs': { label: 'Energiekosten', unit: 'Mio. €/a' },
+                'emissions': { label: 'CO₂-Emissionen', unit: 't/a' },
+                'selfsufficiency': { label: 'Selbstversorgung gesamt', unit: '%' },
+                'cost invest': { label: 'Investitionskosten', unit: 'Mio. €/a' },
+                'cost operation': { label: 'Betriebskosten', unit: 'Mio. €/a' },
+                'selfsufficiency electric': { label: 'Selbstversorgung Strom', unit: '%' },
+                'selfsufficiency heat': { label: 'Selbstversorgung Wärme', unit: '%' },
+                'chps': { label: 'BHKWs', unit: 'Anzahl' },
+                'boilers': { label: 'Kessel', unit: 'Anzahl' },
+                'windturbines': { label: 'Windturbinen', unit: 'Anzahl' },
+                'heatpumps': { label: 'Wärmepumpen', unit: 'Anzahl' },
+                'PV': { label: 'Photovoltaik', unit: 'Anzahl' },
+                'solarthermal': { label: 'Solarthermie', unit: 'Anzahl' },
+                'EES': { label: 'Elektrischer Speicher', unit: 'Anzahl' },
+                'TES': { label: 'Thermischer Speicher', unit: 'Anzahl' },
+                'total el demand': { label: 'Strombedarf', unit: 'MWh/a' },
+                'total el production': { label: 'Stromproduktion', unit: 'MWh/a' },
+                'total el purchase': { label: 'Strombezug', unit: 'MWh/a' },
+                'total heat demand': { label: 'Wärmebedarf', unit: 'MWh/a' },
+                'total heat production': { label: 'Wärmeproduktion', unit: 'MWh/a' },
+                'total heat purchase': { label: 'Wärmebezug', unit: 'MWh/a' }
+            };
+
+            const info = metricInfo[metric] || { label: metric, unit: '' };
+            
+            let trace;
+            let layout = {
+                title: `${info.label} - Teamvergleich`,
+                font: { size: 12 },
+                margin: { t: 50, b: 50, l: 60, r: 60 }
+            };
+
+            if (chartType === 'bar') {
+                trace = {
+                    x: teams,
+                    y: values,
+                    type: 'bar',
+                    marker: {
+                        color: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF']
+                    }
+                };
+                layout.xaxis = { title: 'Teams' };
+                layout.yaxis = { title: info.unit };
+                
+            } else if (chartType === 'pie') {
+                trace = {
+                    labels: teams,
+                    values: values,
+                    type: 'pie',
+                    marker: {
+                        colors: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF']
+                    }
+                };
+                
+            } else if (chartType === 'radar') {
+                // For radar chart, normalize values to 0-100 scale
+                const maxValue = Math.max(...values);
+                const normalizedValues = values.map(v => (v / maxValue) * 100);
+                
+                trace = {
+                    r: normalizedValues,
+                    theta: teams,
+                    fill: 'toself',
+                    type: 'scatterpolar',
+                    name: info.label
+                };
+                layout = {
+                    title: `${info.label} - Relative Verteilung`,
+                    polar: {
+                        radialaxis: {
+                            visible: true,
+                            range: [0, 100]
+                        }
+                    },
+                    font: { size: 12 },
+                    margin: { t: 50, b: 50, l: 60, r: 60 }
+                };
+            }
+
+            Plotly.newPlot('comparison-chart', [trace], layout, {responsive: true});
+        }
+
+        // Download CSV function
+        async function downloadCSV() {
+            try {
+                const response = await fetch('/api/compare/csv');
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'team_comparison_results.csv';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    showToast('success', 'CSV-Datei heruntergeladen');
+                } else {
+                    throw new Error('CSV nicht verfügbar');
+                }
+            } catch (error) {
+                showToast('danger', 'Fehler beim Herunterladen der CSV: ' + error.message);
+            }
+        }
+
+        // Show toast notification
+        function showToast(type, message) {
+            const toastHtml = `
+                <div class="toast align-items-center text-white bg-${type === 'danger' ? 'danger' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : 'info'} border-0" role="alert">
+                    <div class="d-flex">
+                        <div class="toast-body">${message}</div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    </div>
+                </div>
+            `;
+            
+            let toastContainer = document.querySelector('.toast-container');
+            if (!toastContainer) {
+                toastContainer = document.createElement('div');
+                toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+                document.body.appendChild(toastContainer);
+            }
+            
+            toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+            const toastElement = toastContainer.lastElementChild;
+            const toast = new bootstrap.Toast(toastElement);
+            toast.show();
+            
+            toastElement.addEventListener('hidden.bs.toast', function () {
+                this.remove();
+            });
+        }
+
+        // Bulk simulation functions
+        async function reloadFromCSV() {
+            if (!confirm('Möchten Sie die Team-Daten aus den CSV-Dateien neu laden? Alle aktuellen Änderungen in der Web-Oberfläche gehen verloren.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/teams/reload-from-csv', { method: 'POST' });
+                const data = await response.json();
+                showToast('success', 'Team-Daten erfolgreich neu geladen');
+                // Reload the teams display
+                loadTeams();
+            } catch (error) {
+                showToast('danger', 'Fehler beim Neu-Laden der Daten: ' + error.message);
+            }
+        }
+
+        async function runAllSimulations() {
+            if (!confirm('Möchten Sie wirklich alle Teams berechnen? Die Simulationen werden nacheinander ausgeführt, dies kann längere Zeit dauern.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/simulate/all', { method: 'POST' });
+                const data = await response.json();
+                showToast('success', `Sequenzielle Berechnung für ${data.team_ids.length} Teams gestartet`);
+            } catch (error) {
+                showToast('danger', 'Fehler beim Starten der Berechnungen: ' + error.message);
+            }
+        }
+
+        async function runSelectedSimulations() {
+            // Get selected team checkboxes
+            const selectedTeams = Array.from(document.querySelectorAll('input[name="team-select"]:checked'))
+                .map(cb => parseInt(cb.value));
+            
+            if (selectedTeams.length === 0) {
+                showToast('warning', 'Bitte wählen Sie mindestens ein Team aus');
+                return;
+            }
+            
+            if (!confirm(`Möchten Sie ${selectedTeams.length} Teams nacheinander berechnen?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/simulate/selected', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(selectedTeams)
+                });
+                const data = await response.json();
+                showToast('success', `Sequenzielle Berechnung für ${data.team_ids.length} Teams gestartet`);
+            } catch (error) {
+                showToast('danger', 'Fehler beim Starten der Berechnungen: ' + error.message);
+            }
+        }
+
+        // Parameters functionality
+        async function showParameters() {
+            try {
+                const response = await fetch('/api/parameters');
+                const data = await response.json();
+                
+                const modal = new bootstrap.Modal(document.getElementById('parametersModal'));
+                renderParameters(data);
+                modal.show();
+            } catch (error) {
+                console.error('Error loading parameters:', error);
+                showToast('danger', 'Fehler beim Laden der Parameter!');
+            }
+        }
+
+        function renderParameters(parameters) {
+            const container = document.getElementById('parameters-content');
+            
+            let html = `
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Wert</th>
+                                <th>Einheit</th>
+                                <th>Komponente</th>
+                                <th>Kommentar</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+            parameters.forEach((param, index) => {
+                html += `
+                    <tr>
+                        <td><strong>${param.var_name}</strong></td>
+                        <td>
+                            <input type="number" class="form-control form-control-sm" 
+                                   id="param_${index}" value="${param.value}" 
+                                   step="0.01" style="width: 120px;">
+                        </td>
+                        <td>${param.unit}</td>
+                        <td><span class="badge bg-secondary">${param.component || '-'}</span></td>
+                        <td><small class="text-muted">${param.Comment || '-'}</small></td>
+                    </tr>`;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>`;
+            
+            container.innerHTML = html;
+            
+            // Store original parameters for reset
+            window.originalParameters = JSON.parse(JSON.stringify(parameters));
+        }
+
+        async function saveParameters() {
+            try {
+                const updatedParams = [];
+                
+                window.originalParameters.forEach((param, index) => {
+                    const inputElement = document.getElementById(`param_${index}`);
+                    if (inputElement) {
+                        const updatedParam = { ...param };
+                        updatedParam.value = parseFloat(inputElement.value);
+                        updatedParams.push(updatedParam);
+                    }
+                });
+
+                const response = await fetch('/api/parameters', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedParams)
+                });
+
+                if (response.ok) {
+                    showToast('success', 'Parameter erfolgreich gespeichert!');
+                } else {
+                    throw new Error('Fehler beim Speichern');
+                }
+            } catch (error) {
+                showToast('danger', 'Fehler beim Speichern der Parameter: ' + error.message);
+            }
+        }
+
+        function resetParameters() {
+            if (window.originalParameters) {
+                renderParameters(window.originalParameters);
+                showToast('info', 'Parameter zurückgesetzt');
+            }
+        }
+
+        // Time Series functionality
+        async function showTimeSeries() {
+            try {
+                const modal = new bootstrap.Modal(document.getElementById('timeSeriesModal'));
+                modal.show();
+                
+                // Load initial time series data
+                await updateTimeSeries();
+            } catch (error) {
+                console.error('Error showing time series:', error);
+                showToast('danger', 'Fehler beim Laden der Zeitreihendaten!');
+            }
+        }
+
+        async function updateTimeSeries() {
+            try {
+                const variable = document.getElementById('timeSeriesVariableSelect').value;
+                const timeRange = document.getElementById('timeRangeSelect').value;
+                const startHour = parseInt(document.getElementById('startHourInput').value);
+
+                const response = await fetch(`/api/timeseries?variable=${encodeURIComponent(variable)}&time_range=${timeRange}&start=${startHour}`);
+                const data = await response.json();
+                
+                renderTimeSeriesChart(data, variable);
+            } catch (error) {
+                console.error('Error updating time series:', error);
+                showToast('danger', 'Fehler beim Aktualisieren der Zeitreihendaten!');
+            }
+        }
+
+        function renderTimeSeriesChart(data, variable) {
+            const trace = {
+                x: data.hours,
+                y: data.values,
+                type: 'scatter',
+                mode: 'lines',
+                name: variable,
+                line: {
+                    color: getVariableColor(variable),
+                    width: 2
+                }
+            };
+
+            const layout = {
+                title: `${getVariableLabel(variable)} - Zeitverlauf`,
+                xaxis: {
+                    title: 'Stunde des Jahres',
+                    showgrid: true
+                },
+                yaxis: {
+                    title: getVariableUnit(variable),
+                    showgrid: true
+                },
+                margin: { t: 50, b: 50, l: 80, r: 50 },
+                font: { size: 12 }
+            };
+
+            Plotly.newPlot('timeseries-chart', [trace], layout, {responsive: true});
+        }
+
+        function getVariableColor(variable) {
+            const colors = {
+                'Demand_el [MWh]': '#FF6384',
+                'Demand_th [MWh]': '#36A2EB', 
+                'Sol_irradiation [Wh/sqm]': '#FFCE56',
+                'Wind_power [kW/unit]': '#4BC0C0'
+            };
+            return colors[variable] || '#9966FF';
+        }
+
+        function getVariableLabel(variable) {
+            const labels = {
+                'Demand_el [MWh]': 'Strombedarf',
+                'Demand_th [MWh]': 'Wärmebedarf',
+                'Sol_irradiation [Wh/sqm]': 'Solarstrahlung',
+                'Wind_power [kW/unit]': 'Windleistung'
+            };
+            return labels[variable] || variable;
+        }
+
+        function getVariableUnit(variable) {
+            const units = {
+                'Demand_el [MWh]': 'MWh',
+                'Demand_th [MWh]': 'MWh',
+                'Sol_irradiation [Wh/sqm]': 'Wh/m²',
+                'Wind_power [kW/unit]': 'kW/Einheit'
+            };
+            return units[variable] || '';
+        }
+
+        // Initialize application
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTeams();
+            initWebSocket();
+        });
+    </script>
+</body>
+</html>

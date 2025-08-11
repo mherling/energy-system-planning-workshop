@@ -169,4 +169,10 @@ def display_results(config_path, team_number):
     print("Self-Sufficiency: {:.2f} %".format(selfsufficiency*100))
     print("")
 
-    return
+    # Return the calculated results
+    return {
+        "co2_emissions": em_co2 / 1e3,  # in t/a
+        "total_costs": (var_costs_es + total_annuity) / 1e6,  # in Mio. €/a
+        "self_sufficiency": selfsufficiency * 100,  # in %
+        "team_name": cfg['team_names'][team_number].upper()
+    }

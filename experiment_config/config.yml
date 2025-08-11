@@ -14,8 +14,8 @@ debug: False
 solver: 'cbc'
 solver_verbose: False
 
-workshop_title: 'Energie für (m)eine Stadt'
-number_of_teams: 3
+workshop_title: 'Energie fï¿½r (m)eine Stadt'
+number_of_teams: 8
 team_names:
 #  - '1'   # 01
 #  - '2'   # 02
