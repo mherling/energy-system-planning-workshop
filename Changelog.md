@@ -1,5 +1,7 @@
 # Changelog
 
+3.0 added web-based UI
+ 
 2.0 Migrate to oemof v044
 - Update Documentation
 - Improved Instructions for Installation and Operation

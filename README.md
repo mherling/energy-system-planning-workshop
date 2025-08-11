@@ -1,3 +1,6 @@
+# Web-based Energy System Planning Workshop
+Based on the origin repo, this is an webbased implementation of this energy system planning workshop. Currently in German.
+
 # Workshop
 In this simulation game you can create and evaluate a new energy system for electricity and heat supply for a imaginary German town with 10000 inhabitants. Choose from technical options such as wind, solar thermal, photovoltaics, heat pumps and conventional technologies as well as energy storages. You avoid shortages, watch costs and CO2-emissions. oemof is used to optimize the operation of each team's energy system during one typical calender year.  
 
