@@ -21,6 +21,7 @@ from detailed_analysis import my_detailed_analysis
 from database import Database
 from models import TeamConfig, SimulationResult, TeamUpdate
 from websocket_manager import ConnectionManager
+from timeseries_analysis import load_team_timeseries, get_available_variables, get_timeseries_summary, get_variable_data, get_energy_flows_for_sankey
 
 app = FastAPI(title="Energy System Planning Workshop", version="1.0.0")
 
@@ -681,6 +682,164 @@ def get_results_from_csv(team_id: int):
     except Exception as e:
         print(f"Error reading results CSV for team {team_id}: {e}")
         return None
+
+@app.get("/api/timeseries/summary")
+async def get_timeseries_summary_endpoint():
+    """Get summary of available time-series data for all teams"""
+    try:
+        summary = get_timeseries_summary()
+        return {"summary": summary}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting timeseries summary: {str(e)}")
+
+@app.get("/api/timeseries/team/{team_id}")
+async def get_team_timeseries_endpoint(team_id: int):
+    """Get complete time-series data for a specific team"""
+    try:
+        if team_id < 1 or team_id > 8:
+            raise HTTPException(status_code=400, detail="Team ID must be between 1 and 8")
+            
+        timeseries_data = load_team_timeseries(team_id)
+        
+        if timeseries_data is None:
+            raise HTTPException(status_code=404, detail=f"No timeseries data found for team {team_id}")
+            
+        return {"team_id": team_id, "data": timeseries_data}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error loading timeseries for team {team_id}: {str(e)}")
+
+@app.get("/api/timeseries/team/{team_id}/variables")
+async def get_team_variables_endpoint(team_id: int):
+    """Get available time-series variables for a specific team"""
+    try:
+        if team_id < 1 or team_id > 8:
+            raise HTTPException(status_code=400, detail="Team ID must be between 1 and 8")
+            
+        variables = get_available_variables(team_id)
+        
+        return {"team_id": team_id, "variables": variables}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting variables for team {team_id}: {str(e)}")
+
+@app.get("/api/timeseries/team/{team_id}/variable/{variable_name}")
+async def get_team_variable_data_endpoint(team_id: int, variable_name: str):
+    """Get time-series data for a specific variable of a specific team"""
+    try:
+        if team_id < 1 or team_id > 8:
+            raise HTTPException(status_code=400, detail="Team ID must be between 1 and 8")
+            
+        # Get the time-series data for this variable
+        data = get_variable_data(team_id, variable_name)
+        
+        if not data:
+            raise HTTPException(status_code=404, detail=f"No data found for variable '{variable_name}' in team {team_id}")
+            
+        # Also get time information
+        timeseries_data = load_team_timeseries(team_id)
+        time_data = timeseries_data.get('time', []) if timeseries_data else []
+        hour_data = timeseries_data.get('hour', []) if timeseries_data else []
+        
+        return {
+            "team_id": team_id,
+            "variable": variable_name,
+            "time": time_data,
+            "hour": hour_data,
+            "data": data
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting variable data for team {team_id}: {str(e)}")
+
+@app.get("/api/timeseries/team/{team_id}/sankey")
+async def get_team_sankey_endpoint(team_id: int, time_period: str = "year"):
+    """Get Sankey diagram data for a specific team's energy flows"""
+    try:
+        if team_id < 1 or team_id > 8:
+            raise HTTPException(status_code=400, detail="Team ID must be between 1 and 8")
+            
+        valid_periods = ["year", "month", "week", "day", "hour"]
+        if time_period not in valid_periods:
+            raise HTTPException(status_code=400, detail=f"Time period must be one of: {valid_periods}")
+            
+        sankey_data = get_energy_flows_for_sankey(team_id, time_period)
+        
+        if not sankey_data:
+            raise HTTPException(status_code=404, detail=f"No energy flow data found for team {team_id}")
+            
+        return sankey_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating Sankey diagram for team {team_id}: {str(e)}")
+
+@app.get("/api/timeseries/compare")
+async def get_timeseries_comparison(
+    variable: str,
+    teams: str = "all",  # Comma-separated team IDs or "all"
+    time_range: str = "all",  # "hour", "day", "week", "month", "all"
+    start_hour: int = 0
+):
+    """Compare time-series data across multiple teams"""
+    try:
+        # Parse team selection
+        if teams == "all":
+            team_ids = list(range(1, 9))
+        else:
+            team_ids = [int(t.strip()) for t in teams.split(",") if t.strip().isdigit()]
+            
+        # Validate team IDs
+        team_ids = [t for t in team_ids if 1 <= t <= 8]
+        
+        if not team_ids:
+            raise HTTPException(status_code=400, detail="No valid team IDs provided")
+            
+        # Define time ranges
+        time_ranges = {
+            "hour": 1,
+            "day": 24,
+            "week": 168,
+            "month": 744,
+            "year": 8760,
+            "all": 8760
+        }
+        
+        if time_range not in time_ranges:
+            raise HTTPException(status_code=400, detail="Invalid time range")
+            
+        hours_to_show = time_ranges[time_range]
+        end_hour = min(start_hour + hours_to_show, 8760)
+        
+        # Collect data for comparison
+        comparison_data = {
+            "variable": variable,
+            "time_range": time_range,
+            "start_hour": start_hour,
+            "end_hour": end_hour,
+            "teams": {},
+            "time_axis": list(range(start_hour, end_hour))
+        }
+        
+        for team_id in team_ids:
+            # Use the new get_variable_data function
+            variable_data = get_variable_data(team_id, variable)
+            if variable_data:
+                # Apply time range filter
+                filtered_data = variable_data[start_hour:end_hour]
+                comparison_data["teams"][f"Team_{team_id:02d}"] = filtered_data
+                    
+        return comparison_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error in timeseries comparison: {str(e)}")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)

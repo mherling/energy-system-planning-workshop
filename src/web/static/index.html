@@ -11,6 +11,7 @@
         .team-card {
             transition: all 0.3s ease;
             border-left: 4px solid #007bff;
+            height: 100%;
         }
         .team-card:hover {
             transform: translateY(-2px);
@@ -37,6 +38,9 @@
             justify-content: center;
             background-color: #f8f9fa;
         }
+        #teams-grid {
+            min-height: 400px;
+        }
     </style>
 </head>
 <body>
@@ -47,13 +51,16 @@
                 Energy System Planning Workshop
             </a>
             <div class="navbar-nav d-flex flex-row gap-2">
+                <button class="btn btn-outline-light" onclick="showWelcome()">
+                    <i class="bi bi-house"></i> Startseite
+                </button>
                 <button class="btn btn-outline-light" onclick="reloadFromCSV()">
                     <i class="bi bi-arrow-clockwise"></i> Daten neu laden
                 </button>
-                <button class="btn btn-outline-light" onclick="runAllSimulations()">
+                <button class="btn btn-outline-light" onclick="showTeamConfiguration(); runAllSimulations()">
                     <i class="bi bi-play-circle"></i> Alle Teams berechnen
                 </button>
-                <button class="btn btn-outline-light" onclick="runSelectedSimulations()">
+                <button class="btn btn-outline-light" onclick="showTeamConfiguration(); runSelectedSimulations()">
                     <i class="bi bi-check-square"></i> Ausgewählte berechnen
                 </button>
                 <button class="btn btn-outline-light" onclick="showComparison()">
@@ -70,8 +77,122 @@
     </nav>
 
     <div class="container mt-4">
+        <!-- Welcome Section -->
+        <div class="row mb-4" id="welcomeSection">
+            <div class="col-12">
+                <div class="card border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <h2 class="mb-0"><i class="bi bi-lightning-charge"></i> Energy System Planning Workshop</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-lg-8">
+                                <h4>Willkommen zum Energiesystemplanungs-Workshop!</h4>
+                                <p class="lead">In diesem Workshop optimieren Sie verschiedene Energiesystemkonfigurationen und vergleichen die Ergebnisse verschiedener Teams.</p>
+                                
+                                <h5><i class="bi bi-info-circle text-primary"></i> Ziel des Workshops</h5>
+                                <p>Entwerfen Sie ein kostengünstiges und nachhaltiges Energiesystem für eine Gemeinde. Dabei stehen Ihnen verschiedene Technologien zur Verfügung:</p>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6><i class="bi bi-sun text-warning"></i> Erneuerbare Energien</h6>
+                                        <ul>
+                                            <li>Photovoltaik-Anlagen</li>
+                                            <li>Windkraftanlagen</li>
+                                            <li>Solarthermie</li>
+                                        </ul>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6><i class="bi bi-fire text-danger"></i> Konventionelle Systeme</h6>
+                                        <ul>
+                                            <li>Gaskessel</li>
+                                            <li>Wärmepumpen</li>
+                                            <li>Energiespeicher</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                
+                                <h5><i class="bi bi-graph-up text-success"></i> Bewertungskriterien</h5>
+                                <p>Ihre Systeme werden nach folgenden Kriterien bewertet:</p>
+                                <ul>
+                                    <li><strong>Gesamtkosten:</strong> Investitions- und Betriebskosten</li>
+                                    <li><strong>CO₂-Emissionen:</strong> Umweltauswirkungen</li>
+                                    <li><strong>Autarkiegrad:</strong> Unabhängigkeit von externen Energiequellen</li>
+                                    <li><strong>Systemeffizienz:</strong> Energieverluste und Wirkungsgrade</li>
+                                </ul>
+                            </div>
+                            <div class="col-lg-4">
+                                <div class="card border-info">
+                                    <div class="card-header bg-info text-white">
+                                        <h6 class="mb-0"><i class="bi bi-gear"></i> Randbedingungen</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row text-center">
+                                            <div class="col-6">
+                                                <h5 class="text-primary">8760</h5>
+                                                <small>Stunden/Jahr</small>
+                                            </div>
+                                            <div class="col-6">
+                                                <h5 class="text-success">100%</h5>
+                                                <small>Versorgungssicherheit</small>
+                                            </div>
+                                        </div>
+                                        <hr>
+                                        <button class="btn btn-outline-info btn-sm w-100 mb-2" onclick="showParameters()">
+                                            <i class="bi bi-gear"></i> Randbedingungen anzeigen
+                                        </button>
+                                        <button class="btn btn-outline-secondary btn-sm w-100" onclick="showTimeSeries()">
+                                            <i class="bi bi-graph-up-arrow"></i> Zeitreihendaten
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="card border-warning mt-3">
+                                    <div class="card-header bg-warning">
+                                        <h6 class="mb-0"><i class="bi bi-play-circle"></i> Erste Schritte</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <ol class="mb-0">
+                                            <li>Team-Konfiguration erstellen</li>
+                                            <li>Parameter anpassen</li>
+                                            <li>Simulation starten</li>
+                                            <li>Ergebnisse vergleichen</li>
+                                        </ol>
+                                        <button class="btn btn-warning btn-sm w-100 mt-2" onclick="showTeamConfiguration()">
+                                            <i class="bi bi-arrow-right"></i> Los geht's!
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Teams Overview -->
-        <div class="row" id="teams-container">
+        <div id="teams-container" style="display: none;">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h3><i class="bi bi-people"></i> Team-Konfiguration</h3>
+                    <p class="text-muted">Konfigurieren Sie die Parameter für jedes Team und starten Sie die Simulationen.</p>
+                    <div class="d-flex gap-2 mb-3">
+                        <button class="btn btn-primary" onclick="runAllSimulations()">
+                            <i class="bi bi-play-circle"></i> Alle Teams berechnen
+                        </button>
+                        <button class="btn btn-success" onclick="runSelectedSimulations()">
+                            <i class="bi bi-check-square"></i> Ausgewählte berechnen
+                        </button>
+                        <button class="btn btn-info" onclick="showComparison()">
+                            <i class="bi bi-bar-chart"></i> Vergleich anzeigen
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="row g-3" id="teams-grid">
+                <!-- Team cards will be inserted here -->
+            </div>
+        </div>
             <!-- Teams will be loaded here -->
         </div>
 
@@ -161,6 +282,48 @@
                                             <option value="bar">Balkendiagramm</option>
                                             <option value="pie">Tortendiagramm</option>
                                             <option value="radar">Netzdiagramm</option>
+                                            <option value="scatter">Korrelationsdiagramm (2 Variablen)</option>
+                                            <option value="scatter3d">3D-Korrelationsdiagramm (3 Variablen)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <!-- Scatter Plot Controls -->
+                                <div class="row mb-3" id="scatterControls" style="display: none;">
+                                    <div class="col-md-4">
+                                        <label class="form-label">X-Achse (Kennzahl 1):</label>
+                                        <select class="form-select" id="scatterXSelect" onchange="updateChart()">
+                                            <option value="costs">Energiekosten (Mio. €/a)</option>
+                                            <option value="emissions">CO₂-Emissionen (t/a)</option>
+                                            <option value="selfsufficiency">Selbstversorgung gesamt (%)</option>
+                                            <option value="cost invest">Investitionskosten (Mio. €)</option>
+                                            <option value="cost operation">Betriebskosten (Mio. €/a)</option>
+                                            <option value="selfsufficiency electric">Selbstversorgung Strom (%)</option>
+                                            <option value="selfsufficiency heat">Selbstversorgung Wärme (%)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Y-Achse (Kennzahl 2):</label>
+                                        <select class="form-select" id="scatterYSelect" onchange="updateChart()">
+                                            <option value="emissions">CO₂-Emissionen (t/a)</option>
+                                            <option value="costs">Energiekosten (Mio. €/a)</option>
+                                            <option value="selfsufficiency">Selbstversorgung gesamt (%)</option>
+                                            <option value="cost invest">Investitionskosten (Mio. €)</option>
+                                            <option value="cost operation">Betriebskosten (Mio. €/a)</option>
+                                            <option value="selfsufficiency electric">Selbstversorgung Strom (%)</option>
+                                            <option value="selfsufficiency heat">Selbstversorgung Wärme (%)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4" id="scatterZControl" style="display: none;">
+                                        <label class="form-label">Z-Achse (Kennzahl 3):</label>
+                                        <select class="form-select" id="scatterZSelect" onchange="updateChart()">
+                                            <option value="selfsufficiency">Selbstversorgung gesamt (%)</option>
+                                            <option value="costs">Energiekosten (Mio. €/a)</option>
+                                            <option value="emissions">CO₂-Emissionen (t/a)</option>
+                                            <option value="cost invest">Investitionskosten (Mio. €)</option>
+                                            <option value="cost operation">Betriebskosten (Mio. €/a)</option>
+                                            <option value="selfsufficiency electric">Selbstversorgung Strom (%)</option>
+                                            <option value="selfsufficiency heat">Selbstversorgung Wärme (%)</option>
                                         </select>
                                     </div>
                                 </div>
@@ -225,36 +388,191 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row mb-3">
-                        <div class="col-md-4">
-                            <label class="form-label">Variable auswählen:</label>
-                            <select class="form-select" id="timeSeriesVariableSelect" onchange="updateTimeSeries()">
-                                <option value="Demand_el [MWh]">Strombedarf</option>
-                                <option value="Demand_th [MWh]">Wärmebedarf</option>
-                                <option value="Sol_irradiation [Wh/sqm]">Solarstrahlung</option>
-                                <option value="Wind_power [kW/unit]">Windleistung</option>
-                            </select>
+                    <!-- Tab Navigation -->
+                    <ul class="nav nav-tabs mb-3" id="timeSeriesTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="input-data-tab" data-bs-toggle="tab" data-bs-target="#input-data" type="button" role="tab">
+                                <i class="bi bi-database"></i> Eingangsdaten
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="simulation-results-tab" data-bs-toggle="tab" data-bs-target="#simulation-results" type="button" role="tab">
+                                <i class="bi bi-graph-up"></i> Simulationsergebnisse
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="team-comparison-tab" data-bs-toggle="tab" data-bs-target="#team-comparison" type="button" role="tab">
+                                <i class="bi bi-people"></i> Teamvergleich
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="energy-flows-tab" data-bs-toggle="tab" data-bs-target="#energy-flows" type="button" role="tab">
+                                <i class="bi bi-diagram-3"></i> Energieflüsse
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <!-- Tab Content -->
+                    <div class="tab-content" id="timeSeriesTabContent">
+                        <!-- Input Data Tab -->
+                        <div class="tab-pane fade show active" id="input-data" role="tabpanel">
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Variable auswählen:</label>
+                                    <select class="form-select" id="timeSeriesVariableSelect" onchange="updateTimeSeries()">
+                                        <option value="Demand_el [MWh]">Strombedarf</option>
+                                        <option value="Demand_th [MWh]">Wärmebedarf</option>
+                                        <option value="Sol_irradiation [Wh/sqm]">Solarstrahlung</option>
+                                        <option value="Wind_power [kW/unit]">Windleistung</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Zeitraum:</label>
+                                    <select class="form-select" id="timeRangeSelect" onchange="updateTimeSeries()">
+                                        <option value="week">Woche (168h)</option>
+                                        <option value="month">Monat (720h)</option>
+                                        <option value="season">Jahreszeit (2160h)</option>
+                                        <option value="year">Ganzes Jahr</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Startpunkt:</label>
+                                    <input type="number" class="form-control" id="startHourInput" value="1" min="1" max="8760" onchange="updateTimeSeries()">
+                                </div>
+                            </div>
+                            <div id="timeseries-chart" style="height: 500px;">
+                                <!-- Time series chart will be rendered here -->
+                            </div>
+                            <div class="mt-3">
+                                <small class="text-muted">
+                                    <strong>Datenquelle:</strong> DAT_Energie-Workshop.CSV (8760 Stunden Jahresverlauf)
+                                </small>
+                            </div>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Zeitraum:</label>
-                            <select class="form-select" id="timeRangeSelect" onchange="updateTimeSeries()">
-                                <option value="week">Woche (168h)</option>
-                                <option value="month">Monat (720h)</option>
-                                <option value="season">Jahreszeit (2160h)</option>
-                                <option value="year">Ganzes Jahr</option>
-                            </select>
+                        
+                        <!-- Simulation Results Tab -->
+                        <div class="tab-pane fade" id="simulation-results" role="tabpanel">
+                            <div class="row mb-3">
+                                <div class="col-md-3">
+                                    <label class="form-label">Team auswählen:</label>
+                                    <select class="form-select" id="teamSelectForTimeseries" onchange="loadTeamTimeseriesVariables()">
+                                        <option value="1">Team 01 - Moabit</option>
+                                        <option value="2">Team 02 - Kreuzberg</option>
+                                        <option value="3">Team 03 - Frohnau</option>
+                                        <option value="4">Team 04 - Adlershof</option>
+                                        <option value="5">Team 05 - Wedding</option>
+                                        <option value="6">Team 06 - Tegel</option>
+                                        <option value="7">Team 07 - Zehlendorf</option>
+                                        <option value="8">Team 08 - Tempelhof</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Variable:</label>
+                                    <select class="form-select" id="simulationVariableSelect" onchange="updateSimulationTimeseries()">
+                                        <option value="">Variable auswählen...</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Zeitraum:</label>
+                                    <select class="form-select" id="simulationTimeRangeSelect" onchange="updateSimulationTimeseries()">
+                                        <option value="hour">Stunde</option>
+                                        <option value="day">Tag (24h)</option>
+                                        <option value="week">Woche (168h)</option>
+                                        <option value="month">Monat (744h)</option>
+                                        <option value="all">Ganzes Jahr</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Startpunkt:</label>
+                                    <input type="number" class="form-control" id="simulationStartHourInput" value="0" min="0" max="8759" onchange="updateSimulationTimeseries()">
+                                </div>
+                            </div>
+                            <div id="simulation-timeseries-chart" style="height: 500px;">
+                                <!-- Simulation time series chart will be rendered here -->
+                            </div>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Startpunkt:</label>
-                            <input type="number" class="form-control" id="startHourInput" value="1" min="1" max="8760" onchange="updateTimeSeries()">
+                        
+                        <!-- Team Comparison Tab -->
+                        <div class="tab-pane fade" id="team-comparison" role="tabpanel">
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Variable:</label>
+                                    <select class="form-select" id="comparisonVariableSelect" onchange="updateTimeseriesComparison()">
+                                        <option value="electricity_demand">Strombedarf</option>
+                                        <option value="electricity_pv_production">PV-Erzeugung</option>
+                                        <option value="electricity_wind_production">Wind-Erzeugung</option>
+                                        <option value="heat_demand">Wärmebedarf</option>
+                                        <option value="heat_boiler_production">Kesselproduktion</option>
+                                        <option value="heat_heatpump_production">Wärmepumpenproduktion</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Teams:</label>
+                                    <select class="form-select" id="teamsSelectForComparison" onchange="updateTimeseriesComparison()">
+                                        <option value="all">Alle Teams</option>
+                                        <option value="1,2,3">Teams 1-3</option>
+                                        <option value="4,5,6">Teams 4-6</option>
+                                        <option value="7,8">Teams 7-8</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Zeitraum:</label>
+                                    <select class="form-select" id="comparisonTimeRangeSelect" onchange="updateTimeseriesComparison()">
+                                        <option value="day">Tag (24h)</option>
+                                        <option value="week">Woche (168h)</option>
+                                        <option value="month">Monat (744h)</option>
+                                        <option value="year">Jahr (8760h)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="comparison-timeseries-chart" style="height: 500px;">
+                                <!-- Comparison time series chart will be rendered here -->
+                            </div>
+                        </div>
+                        
+                        <!-- Energy Flows Tab -->
+                        <div class="tab-pane fade" id="energy-flows" role="tabpanel">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Team auswählen:</label>
+                                    <select class="form-select" id="sankeyTeamSelect" onchange="updateSankeyDiagram()">
+                                        <option value="1">Team 01 - Moabit</option>
+                                        <option value="2">Team 02 - Kreuzberg</option>
+                                        <option value="3">Team 03 - Mitte</option>
+                                        <option value="4">Team 04 - Prenzlauer Berg</option>
+                                        <option value="5">Team 05 - Friedrichshain</option>
+                                        <option value="6">Team 06 - Wedding</option>
+                                        <option value="7">Team 07 - Neukölln</option>
+                                        <option value="8">Team 08 - Charlottenburg</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Zeitraum:</label>
+                                    <select class="form-select" id="sankeyTimePeriodSelect" onchange="updateSankeyDiagram()">
+                                        <option value="day">Tag (24h)</option>
+                                        <option value="week">Woche (168h)</option>
+                                        <option value="month">Monat (744h)</option>
+                                        <option value="year" selected>Jahr (8760h)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="sankey-diagram" style="height: 600px;">
+                                <!-- Sankey diagram will be rendered here -->
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h6 class="card-title">Energiefluss-Zusammenfassung</h6>
+                                            <div id="energy-summary" class="row">
+                                                <!-- Energy summary will be displayed here -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div id="timeseries-chart" style="height: 500px;">
-                        <!-- Time series chart will be rendered here -->
-                    </div>
-                    <div class="mt-3">
-                        <small class="text-muted">
-                            <strong>Datenquelle:</strong> DAT_Energie-Workshop.CSV (8760 Stunden Jahresverlauf)
                         </small>
                     </div>
                 </div>
@@ -319,6 +637,18 @@
             return texts[status] || status;
         }
 
+        // Navigation functions
+        function showWelcome() {
+            document.getElementById('welcomeSection').style.display = 'block';
+            document.getElementById('teams-container').style.display = 'none';
+        }
+
+        function showTeamConfiguration() {
+            document.getElementById('welcomeSection').style.display = 'none';
+            document.getElementById('teams-container').style.display = 'block';
+            loadTeams();
+        }
+
         // Load teams from API
         async function loadTeams() {
             try {
@@ -333,7 +663,7 @@
 
         // Render teams in the UI
         function renderTeams() {
-            const container = document.getElementById('teams-container');
+            const container = document.getElementById('teams-grid');
             container.innerHTML = '';
 
             teams.forEach(team => {
@@ -345,7 +675,7 @@
         // Create team card element
         function createTeamCard(team) {
             const col = document.createElement('div');
-            col.className = 'col-md-6 col-lg-4 mb-4';
+            col.className = 'col-xl-4 col-lg-6 col-md-6 col-sm-12 mb-4';
 
             col.innerHTML = `
                 <div class="card team-card h-100" id="team-${team.id}">
@@ -816,6 +1146,21 @@
 
             const info = metricInfo[metric] || { label: metric, unit: '' };
             
+            // Show/hide scatter plot controls
+            const scatterControls = document.getElementById('scatterControls');
+            const scatterZControl = document.getElementById('scatterZControl');
+            if (chartType === 'scatter' || chartType === 'scatter3d') {
+                scatterControls.style.display = 'block';
+                if (chartType === 'scatter3d') {
+                    scatterZControl.style.display = 'block';
+                } else {
+                    scatterZControl.style.display = 'none';
+                }
+            } else {
+                scatterControls.style.display = 'none';
+                scatterZControl.style.display = 'none';
+            }
+            
             let trace;
             let layout = {
                 title: `${info.label} - Teamvergleich`,
@@ -843,6 +1188,125 @@
                     marker: {
                         colors: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF']
                     }
+                };
+                
+            } else if (chartType === 'scatter') {
+                const xMetric = document.getElementById('scatterXSelect').value;
+                const yMetric = document.getElementById('scatterYSelect').value;
+                
+                const xValues = window.csvData.map(row => parseFloat(row[xMetric]) || 0);
+                const yValues = window.csvData.map(row => parseFloat(row[yMetric]) || 0);
+                
+                const xInfo = metricInfo[xMetric] || { label: xMetric, unit: '' };
+                const yInfo = metricInfo[yMetric] || { label: yMetric, unit: '' };
+                
+                trace = {
+                    x: xValues,
+                    y: yValues,
+                    mode: 'markers+text',
+                    type: 'scatter',
+                    text: teams,
+                    textposition: 'top center',
+                    marker: {
+                        size: 12,
+                        color: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'],
+                        line: {
+                            width: 2,
+                            color: '#ffffff'
+                        }
+                    },
+                    textfont: {
+                        size: 10,
+                        color: '#000000'
+                    }
+                };
+                
+                layout = {
+                    title: `${xInfo.label} vs. ${yInfo.label} - Teamvergleich`,
+                    xaxis: { 
+                        title: `${xInfo.label} (${xInfo.unit})`,
+                        gridcolor: '#e0e0e0'
+                    },
+                    yaxis: { 
+                        title: `${yInfo.label} (${yInfo.unit})`,
+                        gridcolor: '#e0e0e0'
+                    },
+                    font: { size: 12 },
+                    margin: { t: 50, b: 80, l: 80, r: 60 },
+                    plot_bgcolor: '#f8f9fa',
+                    paper_bgcolor: '#ffffff'
+                };
+                
+            } else if (chartType === 'scatter3d') {
+                const xMetric = document.getElementById('scatterXSelect').value;
+                const yMetric = document.getElementById('scatterYSelect').value;
+                const zMetric = document.getElementById('scatterZSelect').value;
+                
+                const xValues = window.csvData.map(row => parseFloat(row[xMetric]) || 0);
+                const yValues = window.csvData.map(row => parseFloat(row[yMetric]) || 0);
+                const zValues = window.csvData.map(row => parseFloat(row[zMetric]) || 0);
+                
+                const xInfo = metricInfo[xMetric] || { label: xMetric, unit: '' };
+                const yInfo = metricInfo[yMetric] || { label: yMetric, unit: '' };
+                const zInfo = metricInfo[zMetric] || { label: zMetric, unit: '' };
+                
+                trace = {
+                    x: xValues,
+                    y: yValues,
+                    z: zValues,
+                    mode: 'markers+text',
+                    type: 'scatter3d',
+                    text: teams,
+                    textposition: 'top center',
+                    marker: {
+                        size: 8,
+                        color: zValues,
+                        colorscale: 'Viridis',
+                        showscale: true,
+                        colorbar: {
+                            title: `${zInfo.label}<br>(${zInfo.unit})`,
+                            titleside: 'right'
+                        },
+                        line: {
+                            width: 2,
+                            color: '#ffffff'
+                        }
+                    },
+                    textfont: {
+                        size: 10,
+                        color: '#000000'
+                    }
+                };
+                
+                layout = {
+                    title: `3D-Analyse: ${xInfo.label} vs. ${yInfo.label} vs. ${zInfo.label}`,
+                    scene: {
+                        xaxis: { 
+                            title: `${xInfo.label} (${xInfo.unit})`,
+                            gridcolor: '#e0e0e0',
+                            backgroundcolor: '#f8f9fa'
+                        },
+                        yaxis: { 
+                            title: `${yInfo.label} (${yInfo.unit})`,
+                            gridcolor: '#e0e0e0',
+                            backgroundcolor: '#f8f9fa'
+                        },
+                        zaxis: { 
+                            title: `${zInfo.label} (${zInfo.unit})`,
+                            gridcolor: '#e0e0e0',
+                            backgroundcolor: '#f8f9fa'
+                        },
+                        camera: {
+                            eye: {
+                                x: 1.2,
+                                y: 1.2,
+                                z: 1.2
+                            }
+                        }
+                    },
+                    font: { size: 12 },
+                    margin: { t: 50, b: 50, l: 50, r: 50 },
+                    paper_bgcolor: '#ffffff'
                 };
                 
             } else if (chartType === 'radar') {
@@ -1084,6 +1548,19 @@
                 
                 // Load initial time series data
                 await updateTimeSeries();
+                
+                // Load team variables for simulation results tab
+                await loadTeamTimeseriesVariables();
+                
+                // Load comparison variables
+                await loadComparisonVariables();
+                
+                // Load initial comparison data
+                await updateTimeseriesComparison();
+                
+                // Load initial Sankey diagram
+                await updateSankeyDiagram();
+                
             } catch (error) {
                 console.error('Error showing time series:', error);
                 showToast('danger', 'Fehler beim Laden der Zeitreihendaten!');
@@ -1166,9 +1643,360 @@
             return units[variable] || '';
         }
 
+        // New simulation timeseries functionality
+        async function loadTeamTimeseriesVariables() {
+            try {
+                const teamId = document.getElementById('teamSelectForTimeseries').value;
+                const response = await fetch(`/api/timeseries/team/${teamId}/variables`);
+                const data = await response.json();
+                
+                const select = document.getElementById('simulationVariableSelect');
+                select.innerHTML = '<option value="">Variable auswählen...</option>';
+                
+                data.variables.forEach(variable => {
+                    const option = document.createElement('option');
+                    option.value = variable;
+                    option.textContent = variable; // Use the German name directly
+                    select.appendChild(option);
+                });
+                
+                // Update chart if a variable is already selected
+                if (select.value) {
+                    updateSimulationTimeseries();
+                }
+                
+            } catch (error) {
+                console.error('Error loading team timeseries variables:', error);
+                showToast('danger', 'Fehler beim Laden der Variablen!');
+            }
+        }
+
+        async function loadComparisonVariables() {
+            try {
+                // Use Team 1 as reference for available variables
+                const response = await fetch(`/api/timeseries/team/1/variables`);
+                const data = await response.json();
+                
+                const select = document.getElementById('comparisonVariableSelect');
+                select.innerHTML = '<option value="">Variable auswählen...</option>';
+                
+                data.variables.forEach(variable => {
+                    const option = document.createElement('option');
+                    option.value = variable;
+                    option.textContent = variable; // Use the German name directly
+                    select.appendChild(option);
+                });
+                
+            } catch (error) {
+                console.error('Error loading comparison variables:', error);
+                showToast('danger', 'Fehler beim Laden der Vergleichsvariablen!');
+            }
+        }
+
+        async function updateSimulationTimeseries() {
+            try {
+                const teamId = document.getElementById('teamSelectForTimeseries').value;
+                const variable = document.getElementById('simulationVariableSelect').value;
+                const timeRange = document.getElementById('simulationTimeRangeSelect').value;
+                const startHour = parseInt(document.getElementById('simulationStartHourInput').value);
+                
+                if (!variable) {
+                    document.getElementById('simulation-timeseries-chart').innerHTML = 
+                        '<p class="text-center text-muted mt-5">Bitte wählen Sie eine Variable aus.</p>';
+                    return;
+                }
+                
+                // Use the new specific endpoint for variable data
+                const response = await fetch(`/api/timeseries/team/${teamId}/variable/${encodeURIComponent(variable)}`);
+                const data = await response.json();
+                
+                renderSimulationTimeseriesChart(data, variable, timeRange, startHour);
+                
+            } catch (error) {
+                console.error('Error updating simulation timeseries:', error);
+                showToast('danger', 'Fehler beim Aktualisieren der Simulationsergebnisse!');
+                document.getElementById('simulation-timeseries-chart').innerHTML = 
+                    '<p class="text-center text-danger mt-5">Fehler beim Laden der Daten. Bitte versuchen Sie es erneut.</p>';
+            }
+        }
+
+        async function updateTimeseriesComparison() {
+            try {
+                const variable = document.getElementById('comparisonVariableSelect').value;
+                const teams = document.getElementById('teamsSelectForComparison').value;
+                const timeRange = document.getElementById('comparisonTimeRangeSelect').value;
+                
+                const response = await fetch(`/api/timeseries/compare?variable=${variable}&teams=${teams}&time_range=${timeRange}`);
+                const data = await response.json();
+                
+                renderTimeseriesComparisonChart(data);
+                
+            } catch (error) {
+                console.error('Error updating timeseries comparison:', error);
+                showToast('danger', 'Fehler beim Teamvergleich!');
+            }
+        }
+
+        function renderSimulationTimeseriesChart(responseData, variable, timeRange, startHour) {
+            // The responseData now comes directly from the new API endpoint
+            // Structure: { team_id, variable, time, hour, data }
+            
+            const variableData = responseData.data || [];
+            
+            if (variableData.length === 0) {
+                document.getElementById('simulation-timeseries-chart').innerHTML = 
+                    '<p class="text-center text-muted mt-5">Keine Daten für diese Variable verfügbar.</p>';
+                return;
+            }
+            
+            // Apply time range filter
+            const timeRanges = {
+                'hour': 1,
+                'day': 24,
+                'week': 168,
+                'month': 744,
+                'all': variableData.length
+            };
+            
+            const hours = timeRanges[timeRange] || 24;
+            const endHour = Math.min(startHour + hours, variableData.length);
+            const filteredData = variableData.slice(startHour, endHour);
+            const timeLabels = Array.from({length: filteredData.length}, (_, i) => startHour + i);
+            
+            const trace = {
+                x: timeLabels,
+                y: filteredData,
+                type: 'scatter',
+                mode: 'lines',
+                name: variable, // Use the German variable name directly
+                line: { color: '#007bff', width: 2 }
+            };
+            
+            const layout = {
+                title: `${variable} - Zeitverlauf (Team ${responseData.team_id})`,
+                xaxis: { 
+                    title: 'Stunde',
+                    gridcolor: '#e0e0e0'
+                },
+                yaxis: { 
+                    title: getSimulationVariableUnit(variable),
+                    gridcolor: '#e0e0e0'
+                },
+                font: { size: 12 },
+                margin: { t: 50, b: 50, l: 80, r: 50 },
+                plot_bgcolor: '#f8f9fa',
+                paper_bgcolor: '#ffffff'
+            };
+            
+            Plotly.newPlot('simulation-timeseries-chart', [trace], layout, {responsive: true});
+        }
+
+        function renderTimeseriesComparisonChart(comparisonData) {
+            const traces = [];
+            const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'];
+            let colorIndex = 0;
+            
+            Object.entries(comparisonData.teams).forEach(([teamName, data]) => {
+                traces.push({
+                    x: comparisonData.time_axis,
+                    y: data,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: teamName,
+                    line: { 
+                        color: colors[colorIndex % colors.length],
+                        width: 2
+                    }
+                });
+                colorIndex++;
+            });
+            
+            const layout = {
+                title: `${comparisonData.variable} - Teamvergleich`,
+                xaxis: { 
+                    title: 'Stunde',
+                    gridcolor: '#e0e0e0'
+                },
+                yaxis: { 
+                    title: getSimulationVariableUnit(comparisonData.variable),
+                    gridcolor: '#e0e0e0'
+                },
+                font: { size: 12 },
+                margin: { t: 50, b: 50, l: 80, r: 50 },
+                plot_bgcolor: '#f8f9fa',
+                paper_bgcolor: '#ffffff',
+                legend: {
+                    orientation: 'h',
+                    y: -0.2
+                }
+            };
+            
+            Plotly.newPlot('comparison-timeseries-chart', traces, layout, {responsive: true});
+        }
+
+        // Sankey diagram functionality
+        async function updateSankeyDiagram() {
+            try {
+                const teamId = document.getElementById('sankeyTeamSelect').value;
+                const timePeriod = document.getElementById('sankeyTimePeriodSelect').value;
+                
+                const response = await fetch(`/api/timeseries/team/${teamId}/sankey?time_period=${timePeriod}`);
+                const data = await response.json();
+                
+                renderSankeyDiagram(data);
+                updateEnergySummary(data);
+                
+            } catch (error) {
+                console.error('Error updating Sankey diagram:', error);
+                showToast('danger', 'Fehler beim Laden des Energiefluss-Diagramms!');
+                document.getElementById('sankey-diagram').innerHTML = 
+                    '<p class="text-center text-danger mt-5">Fehler beim Laden der Energiefluss-Daten. Bitte versuchen Sie es erneut.</p>';
+            }
+        }
+
+        function renderSankeyDiagram(sankeyData) {
+            if (!sankeyData || !sankeyData.nodes || !sankeyData.links) {
+                document.getElementById('sankey-diagram').innerHTML = 
+                    '<p class="text-center text-muted mt-5">Keine Energiefluss-Daten verfügbar.</p>';
+                return;
+            }
+
+            // Prepare data for Plotly Sankey
+            const nodeColors = [
+                '#FFD700', // Photovoltaik - Gold
+                '#87CEEB', // Wind - Sky Blue
+                '#FF6347', // Stromnetz - Tomato
+                '#8B4513', // Gas/Brennstoff - Saddle Brown
+                '#FFA500', // Solarthermie - Orange
+                '#4169E1', // Strom - Royal Blue
+                '#DC143C', // Wärme - Crimson
+                '#32CD32', // BHKW - Lime Green
+                '#FF69B4', // Gaskessel - Hot Pink
+                '#20B2AA', // Wärmepumpe - Light Sea Green
+                '#000080', // Strombedarf - Navy
+                '#8B0000', // Wärmebedarf - Dark Red
+                '#708090'  // Stromeinspeisung - Slate Gray
+            ];
+
+            const trace = {
+                type: "sankey",
+                orientation: "h",
+                node: {
+                    pad: 15,
+                    thickness: 20,
+                    line: {
+                        color: "black",
+                        width: 0.5
+                    },
+                    label: sankeyData.nodes,
+                    color: nodeColors.slice(0, sankeyData.nodes.length)
+                },
+                link: {
+                    source: sankeyData.links.map(link => link.source),
+                    target: sankeyData.links.map(link => link.target),
+                    value: sankeyData.links.map(link => link.value),
+                    label: sankeyData.links.map(link => link.label),
+                    color: sankeyData.links.map((_, i) => `rgba(0, 116, 217, ${0.3 + (i % 3) * 0.2})`)
+                }
+            };
+
+            const layout = {
+                title: {
+                    text: `Energieflüsse Team ${sankeyData.team_id} (${getTimePeriodLabel(sankeyData.time_period)})`,
+                    font: { size: 16 }
+                },
+                font: { size: 12 },
+                margin: { t: 50, b: 20, l: 20, r: 20 }
+            };
+
+            Plotly.newPlot('sankey-diagram', [trace], layout, {responsive: true});
+        }
+
+        function updateEnergySummary(sankeyData) {
+            const summaryDiv = document.getElementById('energy-summary');
+            
+            if (!sankeyData) {
+                summaryDiv.innerHTML = '<p class="text-center text-muted">Keine Zusammenfassung verfügbar.</p>';
+                return;
+            }
+
+            const totalElectricity = sankeyData.total_electricity || 0;
+            const totalHeat = sankeyData.total_heat || 0;
+            const totalGas = sankeyData.total_gas || 0;
+            
+            summaryDiv.innerHTML = `
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <h5 class="text-primary">${totalElectricity.toFixed(1)} MWh</h5>
+                        <small class="text-muted">Gesamte Stromerzeugung</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <h5 class="text-danger">${totalHeat.toFixed(1)} MWh</h5>
+                        <small class="text-muted">Gesamte Wärmeerzeugung</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <h5 class="text-warning">${totalGas.toFixed(1)} MWh</h5>
+                        <small class="text-muted">Gas-/Brennstoffverbrauch</small>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getTimePeriodLabel(period) {
+            const labels = {
+                'hour': '1 Stunde',
+                'day': '1 Tag',
+                'week': '1 Woche', 
+                'month': '1 Monat',
+                'year': '1 Jahr'
+            };
+            return labels[period] || period;
+        }
+
+        function getSimulationVariableUnit(variable) {
+            const units = {
+                // German variable names to units
+                'Strombedarf': 'MWh',
+                'PV-Erzeugung': 'MWh',
+                'Wind-Erzeugung': 'MWh',
+                'BHKW-Stromerzeugung': 'MWh',
+                'Strombezug aus Netz': 'MWh',
+                'Stromeinspeisung ins Netz': 'MWh',
+                'Wärmebedarf': 'MWh',
+                'Kessel-Wärmeerzeugung': 'MWh',
+                'BHKW-Wärmeerzeugung': 'MWh',
+                'Wärmepumpen-Erzeugung': 'MWh',
+                'Solarthermie-Erzeugung': 'MWh',
+                'Elektrischer Speicherstand': 'MWh',
+                'Thermischer Speicherstand': 'MWh',
+                // Keep old names for backwards compatibility
+                'electricity_demand': 'MWh',
+                'electricity_pv_production': 'MWh', 
+                'electricity_wind_production': 'MWh',
+                'electricity_chp_production': 'MWh',
+                'electricity_grid_import': 'MWh',
+                'electricity_grid_export': 'MWh',
+                'heat_demand': 'MWh',
+                'heat_boiler_production': 'MWh',
+                'heat_chp_production': 'MWh',
+                'heat_heatpump_production': 'MWh',
+                'heat_solar_thermal_production': 'MWh',
+                'storage_electric_storage': 'MWh',
+                'storage_thermal_storage': 'MWh',
+                'production_pv': 'MWh',
+                'production_wind': 'MWh',
+                'production_solar_thermal': 'MWh'
+            };
+            return units[variable] || 'MWh';
+        }
+
         // Initialize application
         document.addEventListener('DOMContentLoaded', function() {
-            loadTeams();
+            showWelcome(); // Start with welcome page
             initWebSocket();
         });
     </script>
