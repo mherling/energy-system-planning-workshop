@@ -70,11 +70,11 @@ async function loadEnergyMetrics() {
 function displayTotalOverview(data) {
     const container = document.getElementById('totalOverviewContent');
     
-    // Calculate metrics
+    // Calculate metrics using central utility
     const totalDemand = data.total_consumption_mwh || 0;
     const totalPotential = data.total_production_potential_mwh || 0;
-    const balanceMWh = totalPotential - totalDemand;
-    const selfSufficiencyPct = totalDemand > 0 ? ((totalPotential / totalDemand) * 100).toFixed(1) : 0;
+    const balanceMWh = calculateEnergyBalance(totalPotential, totalDemand);
+    const selfSufficiencyPct = calculateSelfSufficiency(totalPotential, totalDemand).toFixed(1);
     const avgConsumptionPerDistrict = districts.length > 0 ? (totalDemand / districts.length).toFixed(0) : 0;
     const avgPotentialPerDistrict = districts.length > 0 ? (totalPotential / districts.length).toFixed(0) : 0;
     

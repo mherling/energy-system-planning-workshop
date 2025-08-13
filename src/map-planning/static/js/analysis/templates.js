@@ -11,30 +11,12 @@ function createEnergyFlowContent(data) {
     const renewables = data.renewable_potential || {};
     const additional = data.additional_data || {};
     
-    // Calculate totals
-    const totalDemand = energyDemand.total_annual_mwh || 
-                       (energyDemand.electricity_mwh || 0) + 
-                       (energyDemand.heating_mwh || 0) + 
-                       (energyDemand.cooling_mwh || 0) + 
-                       (energyDemand.transport_mwh || 0);
-    
-    const currentGeneration = data.current_generation || {};
-    const totalGeneration = currentGeneration.total_generation_mwh || 
-                           (currentGeneration.solar_pv_mwh || 0) + 
-                           (currentGeneration.solar_thermal_mwh || 0) + 
-                           (currentGeneration.small_wind_mwh || 0) + 
-                           (currentGeneration.biomass_mwh || 0) + 
-                           (currentGeneration.chp_mwh || 0) + 
-                           (currentGeneration.geothermal_mwh || 0);
-    
-    const totalPotential = renewables.total_potential_mwh || 
-                          (renewables.solar_pv_mwh || 0) + 
-                          (renewables.solar_thermal_mwh || 0) + 
-                          (renewables.small_wind_mwh || 0) + 
-                          (renewables.biomass_mwh || 0) + 
-                          (renewables.geothermal_mwh || 0);
-    
-    const renewableShare = totalDemand > 0 ? Math.round((totalGeneration / totalDemand) * 100) : 0;
+    // Calculate totals using central utility
+    const metrics = calculateEnergyMetrics(data);
+    const totalDemand = metrics.totalDemand;
+    const totalGeneration = metrics.totalGeneration;
+    const totalPotential = metrics.totalPotential;
+    const renewableShare = metrics.renewableShare;
     
     return `
         <!-- Quartier Header -->
@@ -321,32 +303,15 @@ async function createAllDistrictsContent() {
         }
         const districts = await response.json();
         
-        // Calculate totals
-        let totalDemand = 0;
-        let totalGeneration = 0;
-        let totalPotential = 0;
-        let totalPopulation = 0;
-        let totalArea = 0;
-        
-        districts.forEach(district => {
-            const energyDemand = district.energy_demand || {};
-            const currentGeneration = district.current_generation || {};
-            const renewables = district.renewable_potential || {};
-            
-            totalDemand += (energyDemand.electricity_mwh || 0) + (energyDemand.heating_mwh || 0) + 
-                          (energyDemand.cooling_mwh || 0) + (energyDemand.transport_mwh || 0);
-            totalGeneration += (currentGeneration.solar_pv_mwh || 0) + (currentGeneration.solar_thermal_mwh || 0) + 
-                              (currentGeneration.small_wind_mwh || 0) + (currentGeneration.biomass_mwh || 0) + 
-                              (currentGeneration.chp_mwh || 0) + (currentGeneration.geothermal_mwh || 0);
-            totalPotential += (renewables.solar_pv_mwh || 0) + (renewables.solar_thermal_mwh || 0) + 
-                             (renewables.small_wind_mwh || 0) + (renewables.biomass_mwh || 0) + 
-                             (renewables.geothermal_mwh || 0);
-            totalPopulation += district.population || 0;
-            totalArea += district.area_km2 || 0;
-        });
-        
-        const renewableShare = totalDemand > 0 ? Math.round((totalGeneration / totalDemand) * 100) : 0;
-        const potentialUtilization = totalPotential > 0 ? Math.round((totalGeneration / totalPotential) * 100) : 0;
+        // Calculate totals using central utility
+        const aggregatedMetrics = calculateAggregatedMetrics(districts);
+        const totalDemand = aggregatedMetrics.totalDemand;
+        const totalGeneration = aggregatedMetrics.totalGeneration;
+        const totalPotential = aggregatedMetrics.totalPotential;
+        const totalPopulation = aggregatedMetrics.totalPopulation;
+        const totalArea = aggregatedMetrics.totalArea;
+        const renewableShare = aggregatedMetrics.renewableShare;
+        const potentialUtilization = aggregatedMetrics.potentialUtilization;
         
         return `
             <!-- Overview Header -->
@@ -430,16 +395,11 @@ async function createAllDistrictsContent() {
                                     </thead>
                                     <tbody>
                                         ${districts.map(district => {
-                                            const energyDemand = district.energy_demand || {};
-                                            const currentGeneration = district.current_generation || {};
-                                            
-                                            const districtDemand = (energyDemand.electricity_mwh || 0) + (energyDemand.heating_mwh || 0) + 
-                                                                  (energyDemand.cooling_mwh || 0) + (energyDemand.transport_mwh || 0);
-                                            const districtGeneration = (currentGeneration.solar_pv_mwh || 0) + (currentGeneration.solar_thermal_mwh || 0) + 
-                                                                      (currentGeneration.small_wind_mwh || 0) + (currentGeneration.biomass_mwh || 0) + 
-                                                                      (currentGeneration.chp_mwh || 0) + (currentGeneration.geothermal_mwh || 0);
-                                            const districtAutarky = districtDemand > 0 ? Math.round((districtGeneration / districtDemand) * 100) : 0;
-                                            const balance = districtGeneration - districtDemand;
+                                            const districtMetrics = calculateEnergyMetrics(district);
+                                            const districtDemand = districtMetrics.totalDemand;
+                                            const districtGeneration = districtMetrics.totalGeneration;
+                                            const districtAutarky = districtMetrics.renewableShare;
+                                            const balance = districtMetrics.energyBalance;
                                             
                                             return `
                                                 <tr>

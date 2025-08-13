@@ -48,12 +48,10 @@ function displayDistrictDetails(district) {
         ? JSON.parse(district.building_types) 
         : district.building_types || {};
     
-    const totalDemand = (energyDemand.electricity_mwh || 0) + (energyDemand.heating_mwh || 0);
-    const totalPotential = (renewablePotential.solar_pv_mwh || 0) + 
-                         (renewablePotential.solar_thermal_mwh || 0) + 
-                         (renewablePotential.small_wind_mwh || 0) + 
-                         (renewablePotential.biomass_mwh || 0) + 
-                         (renewablePotential.geothermal_mwh || 0);
+    // Calculate energy metrics using central utility
+    const metrics = calculateEnergyMetrics(district);
+    const totalDemand = metrics.totalDemand;
+    const totalPotential = metrics.totalPotential;
     
     container.innerHTML = `
         <!-- Basic Info -->
