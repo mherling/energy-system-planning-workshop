@@ -10,15 +10,18 @@ import uvicorn
 import json
 from contextlib import asynccontextmanager
 from database import GridPlanningDatabase
+from data_manager import QuartierDataManager
 
-# Database instance
+# Database and Data Manager instances
 db = None
+data_manager = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global db
-    # Initialize database
+    global db, data_manager
+    # Initialize database and data manager
     db = GridPlanningDatabase("grid_planning.db")
+    data_manager = QuartierDataManager()
     await db.initialize()
     yield
     # Cleanup
@@ -121,33 +124,8 @@ async def get_stakeholder_influence():
 # Energy Scenario API
 @app.get("/api/energy-scenarios")
 async def get_energy_scenarios():
-    """Get predefined energy price scenarios"""
-    return {
-        "base_case": {
-            "name": "Basis-Szenario 2025",
-            "description": "Aktuelle Marktpreise mit moderater Steigerung",
-            "electricity_prices": {"2025": 0.32, "2030": 0.35, "2040": 0.40, "2050": 0.45},
-            "gas_prices": {"2025": 0.08, "2030": 0.10, "2040": 0.15, "2050": 0.20},
-            "heat_prices": {"2025": 0.09, "2030": 0.11, "2040": 0.14, "2050": 0.18},
-            "co2_prices": {"2025": 45, "2030": 65, "2040": 100, "2050": 150}
-        },
-        "high_prices": {
-            "name": "Hohe Energiepreise",
-            "description": "Szenario mit deutlich steigenden Energiekosten",
-            "electricity_prices": {"2025": 0.38, "2030": 0.45, "2040": 0.55, "2050": 0.65},
-            "gas_prices": {"2025": 0.12, "2030": 0.18, "2040": 0.25, "2050": 0.35},
-            "heat_prices": {"2025": 0.13, "2030": 0.18, "2040": 0.22, "2050": 0.28},
-            "co2_prices": {"2025": 55, "2030": 85, "2040": 130, "2050": 200}
-        },
-        "green_transition": {
-            "name": "Grüne Energiewende",
-            "description": "Beschleunigte Dekarbonisierung mit sinkenden EE-Kosten",
-            "electricity_prices": {"2025": 0.30, "2030": 0.28, "2040": 0.25, "2050": 0.22},
-            "gas_prices": {"2025": 0.10, "2030": 0.15, "2040": 0.25, "2050": 0.40},
-            "heat_prices": {"2025": 0.10, "2030": 0.12, "2040": 0.15, "2050": 0.18},
-            "co2_prices": {"2025": 50, "2030": 80, "2040": 120, "2050": 180}
-        }
-    }
+    """Get predefined energy price scenarios from configuration"""
+    return data_manager.get_energy_scenarios()
 
 # Technology Templates API
 @app.get("/api/technology-templates")
@@ -163,6 +141,7 @@ async def get_energy_balance():
     
     total_consumption = 0
     total_production = 0
+    district_details = []
     
     for district in districts:
         # Extract consumption from energy_demand
@@ -178,31 +157,69 @@ async def get_energy_balance():
             renewable_potential = json.loads(renewable_potential)
         production = renewable_potential.get('total_potential_mwh', 0)
         total_production += production
+        
+        # Add district details for overview
+        district_details.append({
+            'id': district['id'],
+            'name': district['name'],
+            'consumption_mwh': consumption,
+            'production_potential_mwh': production,
+            'balance_mwh': production - consumption,
+            'color': data_manager.get_quartier_color(district['id'])
+        })
     
     return {
-        "total_consumption_mwh": total_consumption,
-        "total_production_potential_mwh": total_production,
-        "balance_mwh": total_production - total_consumption,
+        "total_consumption_mwh": round(total_consumption, 1),
+        "total_production_potential_mwh": round(total_production, 1),
+        "balance_mwh": round(total_production - total_consumption, 1),
         "self_sufficiency_ratio": min(total_production / total_consumption, 1.0) if total_consumption > 0 else 0,
-        "districts_count": len(districts)
+        "districts_count": len(districts),
+        "district_details": district_details
     }
 
 @app.get("/api/analysis/co2-emissions")
 async def get_co2_analysis():
-    """Get CO2 emissions analysis"""
+    """Get CO2 emissions analysis using configured emission factors"""
     districts = await db.get_districts()
+    emission_factors = data_manager.get_emission_factors()
     
     total_emissions = 0
+    district_emissions = []
+    
     for district in districts:
-        # Simple calculation: consumption * emission factor
-        consumption = district.get('energy_consumption', 0)
-        emission_factor = 0.4  # kg CO2/kWh (German grid mix)
-        total_emissions += consumption * emission_factor
+        # Extract energy demand
+        energy_demand = district.get('energy_demand', {})
+        if isinstance(energy_demand, str):
+            energy_demand = json.loads(energy_demand)
+        
+        # Calculate emissions based on energy types
+        electricity_emissions = energy_demand.get('electricity_mwh', 0) * 1000 * emission_factors.get('electricity_grid_kg_co2_per_kwh', 0.4)
+        heating_emissions = energy_demand.get('heating_mwh', 0) * 1000 * emission_factors.get('gas_kg_co2_per_kwh', 0.2)
+        
+        district_total = electricity_emissions + heating_emissions
+        total_emissions += district_total
+        
+        district_emissions.append({
+            'id': district['id'],
+            'name': district['name'],
+            'emissions_tons': round(district_total / 1000, 1),
+            'color': data_manager.get_quartier_color(district['id'])
+        })
     
     return {
-        "total_emissions_tons": total_emissions / 1000,  # Convert to tons
-        "emission_factor_kg_per_kwh": 0.4,
-        "districts_analyzed": len(districts)
+        "total_emissions_tons": round(total_emissions / 1000, 1),
+        "emission_factors": emission_factors,
+        "districts_analyzed": len(districts),
+        "district_emissions": district_emissions
+    }
+
+@app.get("/api/system-config")
+async def get_system_config():
+    """Get system configuration parameters"""
+    return {
+        "regional_parameters": data_manager.get_regional_parameters(),
+        "emission_factors": data_manager.get_emission_factors(),
+        "quartier_colors": {f"quartier_{i}": data_manager.get_quartier_color(f"quartier_{i}") for i in range(1, 9)}
     }
 
 if __name__ == "__main__":

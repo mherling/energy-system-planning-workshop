@@ -1,0 +1,483 @@
+# Quartier-Konfiguration für Zittau
+# Definiert Standarddaten und Datenstruktur für alle Quartiere
+
+# Schema-Definition für Datenvalidierung
+schema:
+  district:
+    required_fields:
+      - id
+      - name
+      - district_type
+      - population
+      - area_km2
+    optional_fields:
+      - description
+      - priority_level
+  
+  energy_demand:
+    electricity_mwh: "number"
+    heating_mwh: "number" 
+    cooling_mwh: "number"
+    transport_mwh: "number"
+    peak_demand_mw: "number"
+    load_profile_type: "string"
+  
+  renewable_potential:
+    solar_pv_mwh: "number"
+    solar_thermal_mwh: "number"
+    small_wind_mwh: "number"
+    biomass_mwh: "number"
+    geothermal_mwh: "number"
+    total_potential_mwh: "number"
+  
+  building_types:
+    residential: "number"
+    commercial: "number"
+    industrial: "number"
+    public: "number"
+    mixed_use: "number"
+  
+  demographics:
+    avg_age: "number"
+    households: "number"
+    avg_income_eur: "number"
+    education_level_high_pct: "number"
+    unemployment_rate_pct: "number"
+  
+  infrastructure:
+    schools: "number"
+    kindergartens: "number"
+    medical_facilities: "number"
+    shopping_centers: "number"
+    public_transport_quality: "string"
+    green_space_pct: "number"
+
+# Standardwerte für verschiedene Quartiertypen
+district_type_defaults:
+  residential:
+    base_population_density: 2000  # Einwohner pro km²
+    energy_demand:
+      electricity_factor: 3.2  # MWh pro Einwohner
+      heating_factor: 2.8
+      cooling_factor: 0.4
+      transport_factor: 1.2
+    renewable_potential:
+      solar_pv_factor: 0.8  # MWh pro Einwohner
+      solar_thermal_factor: 0.6
+      small_wind_factor: 0.2
+    buildings:
+      residential_pct: 85
+      commercial_pct: 10
+      public_pct: 5
+    demographics:
+      avg_age: 42
+      avg_income_eur: 32000
+      education_high_pct: 35
+      unemployment_rate_pct: 8
+    
+  commercial:
+    base_population_density: 800
+    energy_demand:
+      electricity_factor: 5.2
+      heating_factor: 3.8
+      cooling_factor: 1.2
+      transport_factor: 2.0
+    renewable_potential:
+      solar_pv_factor: 1.5
+      solar_thermal_factor: 0.4
+      small_wind_factor: 0.3
+    buildings:
+      residential_pct: 30
+      commercial_pct: 60
+      public_pct: 10
+    demographics:
+      avg_age: 38
+      avg_income_eur: 38000
+      education_high_pct: 45
+      unemployment_rate_pct: 6
+    
+  industrial:
+    base_population_density: 300
+    energy_demand:
+      electricity_factor: 12.0
+      heating_factor: 8.5
+      cooling_factor: 2.0
+      transport_factor: 3.5
+    renewable_potential:
+      solar_pv_factor: 2.2
+      solar_thermal_factor: 0.3
+      small_wind_factor: 1.2
+    buildings:
+      residential_pct: 20
+      commercial_pct: 25
+      industrial_pct: 50
+      public_pct: 5
+    demographics:
+      avg_age: 41
+      avg_income_eur: 45000
+      education_high_pct: 65
+      unemployment_rate_pct: 4
+    
+  mixed:
+    base_population_density: 1400
+    energy_demand:
+      electricity_factor: 4.2
+      heating_factor: 3.5
+      cooling_factor: 0.8
+      transport_factor: 1.8
+    renewable_potential:
+      solar_pv_factor: 1.1
+      solar_thermal_factor: 0.5
+      small_wind_factor: 0.4
+    buildings:
+      residential_pct: 55
+      commercial_pct: 30
+      industrial_pct: 10
+      public_pct: 5
+    demographics:
+      avg_age: 40
+      avg_income_eur: 35000
+      education_high_pct: 42
+      unemployment_rate_pct: 7
+
+# Spezifische Quartier-Definitionen für Zittau
+quartiers:
+  quartier_1:
+    name: "Zentrum"
+    district_type: "mixed"
+    area_km2: 0.8
+    population_override: 2500  # Überschreibt Berechnung basierend auf Dichte
+    description: "Historisches Zentrum mit Rathaus und Geschäften"
+    priority_level: "high"
+    energy_demand:
+      electricity_mwh: 12000  # Absolute Werte
+      heating_mwh: 8000
+      cooling_mwh: 2000
+      transport_mwh: 4500
+      total_annual_mwh: 26500
+    renewable_potential:
+      solar_pv_mwh: 2750
+      solar_thermal_mwh: 1250
+      small_wind_mwh: 1000
+      biomass_mwh: 0
+      geothermal_mwh: 500
+      total_potential_mwh: 5500
+    special_factors:
+      heritage_protection: true
+      tourist_area: true
+    
+  quartier_2:
+    name: "Süd"
+    district_type: "residential"
+    area_km2: 1.2
+    population_override: 1800
+    description: "Wohngebiet mit Wohnblöcken sowie Mehr- und Einfamilienhäusern"
+    priority_level: "medium"
+    energy_demand:
+      electricity_mwh: 5760  # 1800 * 3.2
+      heating_mwh: 5040  # 1800 * 2.8
+      cooling_mwh: 720   # 1800 * 0.4
+      transport_mwh: 2160  # 1800 * 1.2
+      total_annual_mwh: 13680
+    renewable_potential:
+      solar_pv_mwh: 2160  # Bessere Dachflächen
+      solar_thermal_mwh: 1440
+      small_wind_mwh: 360
+      biomass_mwh: 0
+      geothermal_mwh: 200
+      total_potential_mwh: 4160
+    special_factors:
+      family_friendly: true
+    
+  quartier_3:
+    name: "Ost"
+    district_type: "residential"
+    area_km2: 1.5
+    population_override: 1500
+    description: "Wohngebiet mit Wohnblöcken sowie Mehr- und Einfamilienhäusern"
+    priority_level: "medium"
+    energy_demand:
+      electricity_mwh: 7200  # Höher wegen älterer Gebäude
+      heating_mwh: 4500  # Höher wegen schlechterer Isolierung
+      cooling_mwh: 600
+      transport_mwh: 1800
+      total_annual_mwh: 14100
+    renewable_potential:
+      solar_pv_mwh: 1200  # Standard residential
+      solar_thermal_mwh: 900
+      small_wind_mwh: 300
+      biomass_mwh: 0
+      geothermal_mwh: 150
+      total_potential_mwh: 2550
+    special_factors:
+      older_buildings: true
+      renovation_potential: "high"
+    
+  quartier_4:
+    name: "Weinau"
+    district_type: "industrial"
+    area_km2: 0.9
+    population_override: 1200
+    description: "Gewerbegebiet mit Produktionsstätten"
+    priority_level: "high"
+    energy_demand:
+      electricity_mwh: 18000  # Sehr hoch für Industrie
+      heating_mwh: 12000  # Hoher Prozesswärmebedarf
+      cooling_mwh: 2400
+      transport_mwh: 4200
+      total_annual_mwh: 36600
+    renewable_potential:
+      solar_pv_mwh: 2640  # Große Dachflächen
+      solar_thermal_mwh: 360
+      small_wind_mwh: 1440
+      biomass_mwh: 0
+      geothermal_mwh: 600
+      total_potential_mwh: 5040
+    special_factors:
+      heavy_industry: true
+      freight_transport: true
+
+  quartier_5:
+    name: "Nord"
+    district_type: "mixed"
+    area_km2: 1.1
+    population_override: 1600
+    description: "Gemischtes Gebiet mit Wohnen und Gewerbe"
+    priority_level: "medium"
+    energy_demand:
+      electricity_mwh: 6720  # Mixed use
+      heating_mwh: 5600
+      cooling_mwh: 1280
+      transport_mwh: 2880
+      total_annual_mwh: 16480
+    renewable_potential:
+      solar_pv_mwh: 1760
+      solar_thermal_mwh: 800
+      small_wind_mwh: 640
+      biomass_mwh: 0
+      geothermal_mwh: 300
+      total_potential_mwh: 3500
+    special_factors:
+      expansion_area: true
+      public_transport_hub: true
+    
+  quartier_6:
+    name: "Vorstadt"
+    district_type: "residential"
+    area_km2: 1.4
+    population_override: 2200
+    description: "Größtes Wohngebiet der Stadt"
+    priority_level: "high"
+    energy_demand:
+      electricity_mwh: 7040  # Standard residential
+      heating_mwh: 6160
+      cooling_mwh: 880
+      transport_mwh: 2640
+      total_annual_mwh: 16720
+    renewable_potential:
+      solar_pv_mwh: 1760  # Standard Wohngebiet
+      solar_thermal_mwh: 1320
+      small_wind_mwh: 440
+      biomass_mwh: 0
+      geothermal_mwh: 220
+      total_potential_mwh: 3740
+    special_factors:
+      social_housing: true
+      renovation_needed: true
+    demographics:
+      avg_income_eur: 28000  # Niedriger als Standard
+    
+  quartier_7:
+    name: "West"
+    district_type: "mixed"
+    area_km2: 1.0
+    population_override: 1400
+    description: "Aufstrebendes Quartier mit Start-ups"
+    priority_level: "medium"
+    energy_demand:
+      electricity_mwh: 5880  # Mixed use
+      heating_mwh: 4900
+      cooling_mwh: 1120
+      transport_mwh: 2520
+      total_annual_mwh: 14420
+    renewable_potential:
+      solar_pv_mwh: 1540
+      solar_thermal_mwh: 700
+      small_wind_mwh: 560
+      biomass_mwh: 0
+      geothermal_mwh: 280
+      total_potential_mwh: 3080
+    special_factors:
+      startup_cluster: true
+      young_professionals: true
+    demographics:
+      avg_age: 35
+      education_high_pct: 55
+    
+  quartier_8:
+    name: "Pethau"
+    district_type: "residential"
+    area_km2: 0.7
+    population_override: 900
+    description: "Kleineres ländliches Wohngebiet"
+    priority_level: "low"
+    energy_demand:
+      electricity_mwh: 2880  # Standard residential
+      heating_mwh: 2520
+      cooling_mwh: 360
+      transport_mwh: 1080
+      total_annual_mwh: 6840
+    renewable_potential:
+      solar_pv_mwh: 720
+      solar_thermal_mwh: 540
+      small_wind_mwh: 180
+      biomass_mwh: 180  # Landwirtschaftliche Reste
+      geothermal_mwh: 90
+      total_potential_mwh: 1710
+    special_factors:
+      rural_character: true
+      low_density: true
+
+# Stakeholder-Templates
+stakeholder_templates:
+  municipality:
+    default_influence: "high"
+    default_participation: "high"
+    typical_interests:
+      - "Stadtplanung"
+      - "Klimaschutz" 
+      - "Bürgerbeteiligung"
+      - "Wirtschaftsförderung"
+  
+  utility:
+    default_influence: "high"
+    default_participation: "medium"
+    typical_interests:
+      - "Energieversorgung"
+      - "Netzausbau"
+      - "Versorgungssicherheit"
+      - "Kosteneffizienz"
+  
+  citizen_group:
+    default_influence: "medium"
+    default_participation: "high"
+    typical_interests:
+      - "Erneuerbare Energien"
+      - "Bürgerbeteiligung"
+      - "Lokale Wertschöpfung"
+      - "Umweltschutz"
+  
+  business:
+    default_influence: "medium"
+    default_participation: "medium"
+    typical_interests:
+      - "Energiekosten"
+      - "Standortattraktivität"
+      - "Versorgungssicherheit"
+      - "Wirtschaftsförderung"
+
+# Technologie-Templates
+technology_templates:
+  solar_pv_small:
+    name: "PV-Dachanlage Klein (< 30 kWp)"
+    category: "generation"
+    technology_type: "solar_pv"
+    capacity_range: [5, 30]
+    default_capacity: 10
+    parameters:
+      efficiency: 0.20
+      lifetime_years: 25
+      degradation_per_year: 0.005
+    costs:
+      capex_eur_per_kw: 1200
+      opex_eur_per_kw_year: 25
+      financing_rate: 0.04
+    environmental:
+      co2_kg_per_mwh: 45
+      recyclability: 0.95
+    availability: "available"
+    
+  solar_pv_large:
+    name: "PV-Dachanlage Groß (> 100 kWp)"
+    category: "generation"
+    technology_type: "solar_pv"
+    capacity_range: [100, 1000]
+    default_capacity: 250
+    parameters:
+      efficiency: 0.22
+      lifetime_years: 25
+      degradation_per_year: 0.004
+    costs:
+      capex_eur_per_kw: 950
+      opex_eur_per_kw_year: 20
+      financing_rate: 0.035
+    environmental:
+      co2_kg_per_mwh: 40
+      recyclability: 0.95
+    availability: "available"
+    
+  wind_small:
+    name: "Kleinwindanlage"
+    category: "generation"
+    technology_type: "wind"
+    capacity_range: [5, 50]
+    default_capacity: 30
+    parameters:
+      efficiency: 0.35
+      lifetime_years: 20
+      noise_db: 45
+      min_wind_speed: 3.5
+    costs:
+      capex_eur_per_kw: 2800
+      opex_eur_per_kw_year: 80
+      financing_rate: 0.05
+    environmental:
+      co2_kg_per_mwh: 25
+      recyclability: 0.90
+    availability: "available"
+    constraints:
+      - "Mindestabstand zu Wohngebäuden: 200m"
+      - "Maximale Bauhöhe: 30m"
+    
+  battery_home:
+    name: "Heimspeicher"
+    category: "storage"
+    technology_type: "battery"
+    capacity_range: [5, 20]
+    default_capacity: 10
+    parameters:
+      efficiency: 0.92
+      cycles: 6000
+      depth_of_discharge: 0.9
+      self_discharge_per_day: 0.001
+    costs:
+      capex_eur_per_kwh: 800
+      opex_eur_per_kwh_year: 15
+      replacement_after_cycles: 6000
+    environmental:
+      co2_kg_per_mwh: 120
+      recyclability: 0.85
+    availability: "available"
+    
+  heat_pump_air:
+    name: "Luft-Wasser-Wärmepumpe"
+    category: "conversion"
+    technology_type: "heat_pump"
+    capacity_range: [6, 25]
+    default_capacity: 12
+    parameters:
+      cop_nominal: 3.8
+      cop_seasonal: 3.2
+      lifetime_years: 18
+      min_temp_operation: -20
+    costs:
+      capex_eur_per_kw: 1400
+      opex_eur_per_kw_year: 60
+      maintenance_interval_years: 2
+    environmental:
+      co2_kg_per_mwh: 150
+      refrigerant_gwp: 675
+    availability: "available"
+    requirements:
+      - "Außenaufstellung erforderlich"
+      - "Schallschutz beachten"

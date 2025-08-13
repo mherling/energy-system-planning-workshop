@@ -1,5 +1,6 @@
 """
-New grid-based database setup for Zittau energy planning
+Bereinigte Grid-basierte Datenbank für Zittau Energiesystemplanung
+Verwendet QuartierDataManager für strukturierte Datenverwaltung
 """
 
 import sqlite3
@@ -8,10 +9,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional
 import aiosqlite
+from data_manager import QuartierDataManager
 
 class GridPlanningDatabase:
     def __init__(self, db_path: str):
         self.db_path = db_path
+        self.data_manager = QuartierDataManager()
         
     async def initialize(self):
         """Initialize database with required tables and data"""
@@ -94,10 +97,7 @@ class GridPlanningDatabase:
             conn.commit()
 
     def populate_quartier_data(self):
-        """Populate database with quartier data from GeoJSON"""
-        import json
-        from pathlib import Path
-        
+        """Populate database with quartier data from data manager"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             
@@ -107,104 +107,34 @@ class GridPlanningDatabase:
             cursor.execute("DELETE FROM districts")
             cursor.execute("DELETE FROM technology_templates")
             
-            # Load GeoJSON data
-            geojson_path = Path(__file__).parent / "data" / "Stadtteile_Zittau.geojson"
-            with open(geojson_path, 'r', encoding='utf-8') as f:
-                geojson_data = json.load(f)
+            # Generate data using data manager
+            quartiers = self.data_manager.generate_quartier_data()
+            stakeholders = self.data_manager.generate_stakeholder_data()
+            technologies = self.data_manager.generate_technology_data()
             
+            # Insert quartier data
             districts_data = []
-            for feature in geojson_data['features']:
-                props = feature['properties']
-                geom = feature['geometry']
-                
-                district_id = f"quartier_{props['id']}"
-                district_name = props['Stadtteil']
-                
-                # Calculate center from geometry
-                coords = geom['coordinates'][0][0]  # Get first polygon ring
-                lats = [coord[1] for coord in coords]
-                lons = [coord[0] for coord in coords]
-                center_lat = sum(lats) / len(lats)
-                center_lon = sum(lons) / len(lons)
-                
-                # Estimate area (rough calculation)
-                area_km2 = 0.5 + (props['id'] * 0.2)  # Mock data for now
-                
-                # Generate realistic data based on quartier name
-                if district_name == "Zentrum":
-                    district_type, pop, elec, heat = 'mixed', 2500, 6500, 4800
-                    buildings = {"residential": 180, "commercial": 95, "public": 12, "office": 45, "retail": 50}
-                    pv_pot, solar_th, wind_pot = 850, 400, 180
-                elif district_name == "Süd":
-                    district_type, pop, elec, heat = 'residential', 1800, 4200, 3600
-                    buildings = {"residential": 220, "commercial": 15, "public": 4, "single_family": 140, "multi_family": 80}
-                    pv_pot, solar_th, wind_pot = 950, 520, 220
-                elif district_name == "Ost":
-                    district_type, pop, elec, heat = 'industrial', 800, 8500, 3200
-                    buildings = {"industrial": 35, "commercial": 25, "residential": 60, "warehouses": 20}
-                    pv_pot, solar_th, wind_pot = 1200, 180, 350
-                elif district_name == "Weinau":
-                    district_type, pop, elec, heat = 'residential', 1200, 3200, 2800
-                    buildings = {"residential": 150, "commercial": 8, "public": 3, "single_family": 120, "multi_family": 30}
-                    pv_pot, solar_th, wind_pot = 750, 450, 200
-                elif district_name == "Nord":
-                    district_type, pop, elec, heat = 'mixed', 1600, 4800, 3400
-                    buildings = {"residential": 170, "commercial": 35, "public": 6, "office": 20, "retail": 15}
-                    pv_pot, solar_th, wind_pot = 820, 380, 250
-                elif district_name == "Vorstadt":
-                    district_type, pop, elec, heat = 'residential', 2200, 5200, 4200
-                    buildings = {"residential": 280, "commercial": 20, "public": 5, "single_family": 180, "multi_family": 100}
-                    pv_pot, solar_th, wind_pot = 1100, 650, 280
-                elif district_name == "West":
-                    district_type, pop, elec, heat = 'mixed', 1400, 4000, 3000
-                    buildings = {"residential": 160, "commercial": 30, "public": 4, "office": 15, "retail": 15}
-                    pv_pot, solar_th, wind_pot = 780, 420, 220
-                elif district_name == "Pethau":
-                    district_type, pop, elec, heat = 'residential', 900, 2400, 2000
-                    buildings = {"residential": 110, "commercial": 8, "public": 2, "single_family": 85, "multi_family": 25}
-                    pv_pot, solar_th, wind_pot = 650, 350, 180
-                else:
-                    district_type, pop, elec, heat = 'mixed', 1000, 3000, 2500
-                    buildings = {"residential": 120, "commercial": 15, "public": 3}
-                    pv_pot, solar_th, wind_pot = 600, 300, 150
-                
-                # Additional data
-                energy_demand = {
-                    "electricity_mwh": elec,
-                    "heating_mwh": heat,
-                    "cooling_mwh": heat * 0.15,
-                    "total_annual_mwh": elec + heat,
-                    "peak_demand_mw": (elec + heat) * 0.0002
-                }
-                
-                renewable_potential = {
-                    "solar_pv_mwh": pv_pot,
-                    "solar_thermal_mwh": solar_th,
-                    "small_wind_mwh": wind_pot,
-                    "total_potential_mwh": pv_pot + solar_th + wind_pot
-                }
-                
-                additional_data = {
-                    "demographics": {"avg_age": 40, "households": int(pop / 2.2)},
-                    "transport": {"cars": int(pop * 0.65), "bikes": int(pop * 1.1)},
-                    "infrastructure": {"schools": max(1, pop // 800), "medical": max(1, pop // 1500)}
-                }
-                
+            for quartier in quartiers:
                 districts_data.append((
-                    district_id,
-                    district_name,
-                    json.dumps(geom),
-                    json.dumps([center_lat, center_lon]),
-                    district_type,
-                    pop,
-                    area_km2,
-                    json.dumps(buildings),
-                    json.dumps(energy_demand),
-                    json.dumps(renewable_potential),
-                    json.dumps(additional_data)
+                    quartier.id,
+                    quartier.name,
+                    json.dumps(quartier.geometry),
+                    json.dumps(quartier.additional_data.get('center', [50.8994, 14.8076])),
+                    quartier.district_type,
+                    quartier.population,
+                    quartier.area_km2,
+                    json.dumps(quartier.building_types),
+                    json.dumps(quartier.energy_demand),
+                    json.dumps(quartier.renewable_potential),
+                    json.dumps({
+                        'demographics': quartier.demographics,
+                        'infrastructure': quartier.infrastructure,
+                        'description': quartier.additional_data.get('description', ''),
+                        'priority_level': quartier.additional_data.get('priority_level', 'medium'),
+                        'special_factors': quartier.additional_data.get('special_factors', {})
+                    })
                 ))
             
-            # Insert district data
             cursor.executemany('''
                 INSERT INTO districts (
                     id, name, geometry, center, district_type, population, area_km2,
@@ -212,73 +142,47 @@ class GridPlanningDatabase:
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', districts_data)
             
-            # Add stakeholder data for quartiers
-            stakeholders_data = [
-                # Government/Public Sector
-                ('stadt_zittau', 'Stadt Zittau - Stadtplanung', 'municipality',
-                 json.dumps({"email": "stadtplanung@zittau.de", "phone": "+49 3583 752-200", "address": "Markt 1, 02763 Zittau", "contact_person": "Dr. Müller"}),
-                 json.dumps(["Stadtplanung", "Klimaschutz", "Bürgerbeteiligung", "Genehmigungen", "Flächennutzung"]), 
-                 'quartier_1', 'high', 'high'),
-                
-                ('energieversorger_zittau', 'Stadtwerke Zittau', 'utility',
-                 json.dumps({"email": "info@stadtwerke-zittau.de", "phone": "+49 3583 540-0", "address": "Äußere Weberstraße 8, 02763 Zittau"}),
-                 json.dumps(["Energieversorgung", "Netzausbau", "Digitalisierung", "Kosteneffizienz"]),
-                 'quartier_3', 'high', 'high'),
-                
-                # Citizen Groups
-                ('buergerenergie_zittau', 'Bürgerenergie Zittau e.V.', 'citizen_group',
-                 json.dumps({"email": "kontakt@buergerenergie-zittau.de", "website": "www.buergerenergie-zittau.de"}),
-                 json.dumps(["Erneuerbare Energien", "Bürgerbeteiligung", "lokale Wertschöpfung"]),
-                 'quartier_2', 'medium', 'high'),
-                
-                # Business/Industry
-                ('gewerbe_zentrum', 'Gewerbeverein Zittau Zentrum', 'business',
-                 json.dumps({"email": "info@gewerbe-zittau.de", "phone": "+49 3583 123456"}),
-                 json.dumps(["Wirtschaftsförderung", "Energiekosten", "Standortattraktivität"]),
-                 'quartier_1', 'medium', 'medium'),
-                
-                ('industrie_ost', 'Industriepark Ost', 'business',
-                 json.dumps({"email": "verwaltung@industriepark-zittau.de"}),
-                 json.dumps(["Energieversorgung", "Prozesswärme", "Standortsicherung"]),
-                 'quartier_3', 'high', 'medium'),
-            ]
+            # Insert stakeholder data
+            stakeholders_data = []
+            for stakeholder in stakeholders:
+                stakeholders_data.append((
+                    stakeholder.id,
+                    stakeholder.name,
+                    stakeholder.category,
+                    json.dumps(stakeholder.contact),
+                    json.dumps(stakeholder.interests),
+                    stakeholder.district_id,
+                    stakeholder.influence_level,
+                    stakeholder.participation_willingness
+                ))
             
             cursor.executemany('''
                 INSERT INTO stakeholders (id, name, type, contact, interests, district_id, influence_level, participation_willingness)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''', stakeholders_data)
             
-            # Technology templates
-            tech_templates = [
-                ('pv_rooftop_small', 'PV-Dachanlage Klein (< 30 kWp)', 'generation', 'pv',
-                 json.dumps({"capacity_kw": 10, "efficiency": 0.20, "lifetime_years": 25}),
-                 json.dumps({"capex_eur_per_kw": 1200, "opex_eur_per_kw_year": 25}),
-                 json.dumps({"co2_kg_per_mwh": 45}), 'available'),
-                
-                ('wind_small', 'Kleinwindanlage', 'generation', 'wind',
-                 json.dumps({"capacity_kw": 30, "efficiency": 0.35, "lifetime_years": 20}),
-                 json.dumps({"capex_eur_per_kw": 2800, "opex_eur_per_kw_year": 80}),
-                 json.dumps({"co2_kg_per_mwh": 25}), 'available'),
-                
-                ('battery_home', 'Heimspeicher', 'storage', 'battery',
-                 json.dumps({"capacity_kwh": 10, "efficiency": 0.92, "cycles": 6000}),
-                 json.dumps({"capex_eur_per_kwh": 800, "opex_eur_per_kwh_year": 15}),
-                 json.dumps({"co2_kg_per_mwh": 120}), 'available'),
-                
-                ('heat_pump_air', 'Luft-Wasser-Wärmepumpe', 'conversion', 'heat_pump',
-                 json.dumps({"capacity_kw": 12, "cop_nominal": 3.8, "lifetime_years": 18}),
-                 json.dumps({"capex_eur_per_kw": 1400, "opex_eur_per_kw_year": 60}),
-                 json.dumps({"co2_kg_per_mwh": 150}), 'available'),
-            ]
+            # Insert technology templates
+            tech_data = []
+            for tech in technologies:
+                tech_data.append((
+                    tech.id,
+                    tech.name,
+                    tech.category,
+                    tech.technology_type,
+                    json.dumps(tech.parameters),
+                    json.dumps(tech.costs),
+                    json.dumps(tech.environmental),
+                    tech.availability
+                ))
             
             cursor.executemany('''
                 INSERT INTO technology_templates (id, name, category, technology_type, 
                                                 parameters, cost_data, environmental_data, availability)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', tech_templates)
+            ''', tech_data)
             
             conn.commit()
-            print("Database populated with quartier data successfully")
+            print(f"Database populated with {len(quartiers)} quartiers, {len(stakeholders)} stakeholders, {len(technologies)} technologies")
 
     async def get_districts(self) -> List[Dict]:
         """Get all quartier districts"""
