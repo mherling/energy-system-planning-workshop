@@ -7,12 +7,15 @@ let currentDistrict = null;
 // Load districts data
 async function loadDistricts() {
     try {
-        const response = await fetch('/api/districts');
-        districts = await response.json();
+        Logger.info('Loading districts data...');
+        districts = await apiClient.getDistricts();
         createQuartiersOnMap(districts);
-        console.log(`Loaded ${districts.length} quartiers`);
+        Logger.info(`Loaded ${districts.length} quartiers`);
+        return districts;
     } catch (error) {
-        console.error('Error loading districts:', error);
+        Logger.error('Error loading districts:', error);
+        notificationManager.showError('Fehler beim Laden der Quartier-Daten');
+        return [];
     }
 }
 
@@ -195,7 +198,7 @@ function displayDistrictDetails(district) {
         
         <!-- Action Buttons -->
         <div class="d-grid gap-2">
-            <button class="btn btn-primary" onclick="showDetailAnalysis('${district.id}')">
+            <button class="btn btn-primary" onclick="showDetailedAnalysis('${district.id}')">
                 <i class="bi bi-bar-chart-line"></i> Detailanalyse
             </button>
         </div>

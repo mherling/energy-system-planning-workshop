@@ -3,49 +3,64 @@
 
 // Initialize application
 document.addEventListener('DOMContentLoaded', function() {
+    Logger.info('DOM Content Loaded - Initializing application...');
     initializeApp();
 });
 
 // Initialize the application
 async function initializeApp() {
     try {
+        Logger.info('Starting application initialization...');
+        
         // Initialize map first
         initializeMap();
+        Logger.info('Map initialized');
         
         // Load all data
         await loadData();
         
-        console.log('Application initialized successfully');
+        Logger.info('Application initialized successfully');
+        notificationManager.showSuccess('Anwendung erfolgreich geladen');
     } catch (error) {
-        console.error('Error initializing application:', error);
-        showToast('Fehler beim Initialisieren der Anwendung', 'error');
+        Logger.error('Error initializing application:', error);
+        notificationManager.showError('Fehler beim Initialisieren der Anwendung');
     }
 }
 
-// Load all data
+// Load all data using new API client
 async function loadData() {
     try {
-        await Promise.all([
+        Logger.info('Loading application data...');
+        
+        const results = await Promise.all([
             loadDistricts(),
-            loadStakeholders(),
-            loadEnergyScenarios(),
+            initializeAnalysis(),
             loadEnergyMetrics()
         ]);
-        console.log('All data loaded successfully');
+        
+        Logger.info('All data loaded successfully:', {
+            districts: results[0]?.length || 0,
+            analysisInitialized: results[1] || false
+        });
+        
     } catch (error) {
-        console.error('Error loading data:', error);
-        showToast('Fehler beim Laden der Daten', 'error');
+        Logger.error('Error loading data:', error);
+        notificationManager.showError('Fehler beim Laden der Daten');
     }
 }
 
-// Load energy metrics for overview
+// Load energy metrics for overview using new API client
 async function loadEnergyMetrics() {
     try {
-        const response = await fetch('/api/analysis/energy-balance');
-        const data = await response.json();
+        Logger.info('Loading energy metrics...');
+        const data = await apiClient.getEnergyBalance();
         displayTotalOverview(data);
+        Logger.info('Energy metrics loaded and displayed');
+        return data;
     } catch (error) {
-        console.error('Error loading energy metrics:', error);
+        Logger.error('Error loading energy metrics:', error);
+        notificationManager.showWarning('Energie-Metriken konnten nicht geladen werden');
+        return null;
     }
 }
 
@@ -258,3 +273,47 @@ function showToast(message, type = 'info') {
         toastElement.remove();
     });
 }
+
+// Show stakeholders modal
+async function showStakeholders() {
+    console.log('showStakeholders called!');
+    try {
+        console.log('Checking if showStakeholderAnalysis exists:', typeof showStakeholderAnalysis);
+        if (typeof showStakeholderAnalysis === 'undefined') {
+            alert('showStakeholderAnalysis function not found!');
+            return;
+        }
+        
+        console.log('Calling showStakeholderAnalysis...');
+        await showStakeholderAnalysis('all');
+        console.log('showStakeholderAnalysis completed');
+    } catch (error) {
+        console.error('Error showing stakeholders:', error);
+        alert('Error: ' + error.message);
+        notificationManager.showError('Fehler beim Anzeigen der Stakeholder');
+    }
+}
+
+// Show scenarios modal
+async function showScenarios() {
+    console.log('showScenarios called!');
+    try {
+        console.log('Checking if showScenarioComparison exists:', typeof showScenarioComparison);
+        if (typeof showScenarioComparison === 'undefined') {
+            alert('showScenarioComparison function not found!');
+            return;
+        }
+        
+        console.log('Calling showScenarioComparison...');
+        await showScenarioComparison('all');
+        console.log('showScenarioComparison completed');
+    } catch (error) {
+        console.error('Error showing scenarios:', error);
+        alert('Error: ' + error.message);
+        notificationManager.showError('Fehler beim Anzeigen der Szenarien');
+    }
+}
+
+// Make functions globally available
+window.showStakeholders = showStakeholders;
+window.showScenarios = showScenarios;

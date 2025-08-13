@@ -1,5 +1,5 @@
 /**
- * Analysis Module - Clean Version without Charts
+ * Analysis Module
  * Handles energy flows, analysis, stakeholders, and scenarios
  */
 
@@ -41,6 +41,7 @@ function createStakeholderContent(quartier) {
     if (quartier === 'all') {
         relevantStakeholders = stakeholders;
     } else {
+        // Since stakeholders don't have quartier property, show all for now
         relevantStakeholders = stakeholders;
     }
     
@@ -97,36 +98,12 @@ function createScenarioContent(quartier) {
                             </div>
                             <div class="card-body">
                                 <p class="card-text">${scenarioData.description || 'Keine Beschreibung verfügbar'}</p>
-                                ${scenarioData.electricity_prices && typeof scenarioData.electricity_prices === 'object' ? `
+                                ${scenarioData.electricity_prices ? `
                                     <div class="mt-2">
                                         <h6>Strompreise:</h6>
                                         <ul class="list-unstyled">
                                             ${Object.entries(scenarioData.electricity_prices).map(([year, price]) => 
-                                                `<li><strong>${year}:</strong> ${typeof price === 'number' ? price.toFixed(3) : price} €/kWh</li>`
-                                            ).join('')}
-                                        </ul>
-                                    </div>
-                                ` : scenarioData.electricity_prices ? `
-                                    <div class="mt-2">
-                                        <small class="text-muted">Strompreis: ${scenarioData.electricity_prices}</small>
-                                    </div>
-                                ` : ''}
-                                ${scenarioData.gas_prices && typeof scenarioData.gas_prices === 'object' ? `
-                                    <div class="mt-2">
-                                        <h6>Gaspreise:</h6>
-                                        <ul class="list-unstyled">
-                                            ${Object.entries(scenarioData.gas_prices).map(([year, price]) => 
-                                                `<li><strong>${year}:</strong> ${typeof price === 'number' ? price.toFixed(3) : price} €/kWh</li>`
-                                            ).join('')}
-                                        </ul>
-                                    </div>
-                                ` : ''}
-                                ${scenarioData.co2_price && typeof scenarioData.co2_price === 'object' ? `
-                                    <div class="mt-2">
-                                        <h6>CO2-Preis:</h6>
-                                        <ul class="list-unstyled">
-                                            ${Object.entries(scenarioData.co2_price).map(([year, price]) => 
-                                                `<li><strong>${year}:</strong> ${typeof price === 'number' ? price.toFixed(0) : price} €/t</li>`
+                                                `<li><strong>${year}:</strong> ${price} €/kWh</li>`
                                             ).join('')}
                                         </ul>
                                     </div>
@@ -491,214 +468,318 @@ function getEnergySourceColor(name) {
     return mapping[name] || '#6c757d';
 }
 
-// Create overview content for all districts
-async function createAllDistrictsContent() {
+// Create energy balance chart using Chart.js
+function createDistrictEnergyChart(district) {
+    console.log('=== CHART CREATION START ===');
+    console.log('District:', district.name);
+    
+    // Check if Chart.js is loaded
+    if (typeof Chart === 'undefined') {
+        console.error('Chart.js library is not loaded!');
+        document.getElementById('districtEnergyChart').parentElement.innerHTML = '<p class="text-danger">Chart.js Bibliothek konnte nicht geladen werden.</p>';
+        return;
+    }
+    
+    console.log('Chart.js is available, version:', Chart.version);
+    
+    const canvas = document.getElementById('districtEnergyChart');
+    if (!canvas) {
+        console.error('Canvas element not found');
+        return;
+    }
+    
+    console.log('Canvas found:', canvas);
+    console.log('Canvas width:', canvas.width, 'height:', canvas.height);
+    console.log('Canvas offsetWidth:', canvas.offsetWidth, 'offsetHeight:', canvas.offsetHeight);
+    console.log('Canvas parent:', canvas.parentElement);
+    
+    // Force canvas size
+    canvas.width = 800;
+    canvas.height = 400;
+    canvas.style.width = '100%';
+    canvas.style.height = '400px';
+    
+    console.log('Canvas size set, width:', canvas.width, 'height:', canvas.height);
+    
+    const ctx = canvas.getContext('2d');
+    console.log('Context obtained:', ctx);
+    
+    // Test if we can draw on canvas directly
     try {
-        // Load all districts data
-        const response = await fetch('/api/districts');
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        ctx.fillStyle = 'red';
+        ctx.fillRect(10, 10, 100, 50);
+        ctx.fillStyle = 'blue';
+        ctx.fillText('Test Canvas', 120, 30);
+        console.log('Direct canvas drawing successful');
+    } catch (drawError) {
+        console.error('Cannot draw on canvas:', drawError);
+        return;
+    }
+    
+    // Wait a moment then clear and create chart
+    setTimeout(() => {
+        console.log('Creating Chart after direct draw test...');
+        
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Very simple test data
+        const testData = [7200, 4500, 0, 2550];
+        const testLabels = ['Strom', 'Wärme', 'EE-Erzg', 'EE-Pot'];
+        
+        console.log('Test data:', testData);
+        console.log('Test labels:', testLabels);
+        
+        // Clear any existing chart
+        if (window.districtChart) {
+            console.log('Destroying existing chart');
+            window.districtChart.destroy();
         }
-        const districts = await response.json();
         
-        // Calculate totals
-        let totalDemand = 0;
-        let totalGeneration = 0;
-        let totalPotential = 0;
-        let totalPopulation = 0;
-        let totalArea = 0;
-        
-        districts.forEach(district => {
-            const energyDemand = district.energy_demand || {};
-            const currentGeneration = district.current_generation || {};
-            const renewables = district.renewable_potential || {};
+        try {
+            console.log('Creating new Chart instance...');
             
-            totalDemand += (energyDemand.electricity_mwh || 0) + (energyDemand.heating_mwh || 0) + 
-                          (energyDemand.cooling_mwh || 0) + (energyDemand.transport_mwh || 0);
-            totalGeneration += (currentGeneration.solar_pv_mwh || 0) + (currentGeneration.solar_thermal_mwh || 0) + 
-                              (currentGeneration.small_wind_mwh || 0) + (currentGeneration.biomass_mwh || 0) + 
-                              (currentGeneration.chp_mwh || 0) + (currentGeneration.geothermal_mwh || 0);
-            totalPotential += (renewables.solar_pv_mwh || 0) + (renewables.solar_thermal_mwh || 0) + 
-                             (renewables.small_wind_mwh || 0) + (renewables.biomass_mwh || 0) + 
-                             (renewables.geothermal_mwh || 0);
-            totalPopulation += district.population || 0;
-            totalArea += district.area_km2 || 0;
-        });
-        
-        const renewableShare = totalDemand > 0 ? Math.round((totalGeneration / totalDemand) * 100) : 0;
-        const potentialUtilization = totalPotential > 0 ? Math.round((totalGeneration / totalPotential) * 100) : 0;
-        
-        return `
-            <!-- Overview Header -->
-            <div class="row mb-4">
-                <div class="col-md-8">
-                    <h4>Gesamtübersicht aller Quartiere</h4>
-                    <p class="text-muted">
-                        ${districts.length} Quartiere • ${totalPopulation.toLocaleString()} Einwohner • ${totalArea.toFixed(1)} km²
-                    </p>
-                </div>
-                <div class="col-md-4">
-                    <div class="card bg-primary text-white">
-                        <div class="card-body text-center">
-                            <h6>Gesamt-Energiebilanz</h6>
-                            <h3>${(totalGeneration - totalDemand > 0 ? '+' : '')}${(totalGeneration - totalDemand).toLocaleString()} MWh</h3>
-                            <small>${totalGeneration >= totalDemand ? 'Energieüberschuss' : 'Energiedefizit'}</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            const config = {
+                type: 'bar',
+                data: {
+                    labels: testLabels,
+                    datasets: [{
+                        label: 'MWh/Jahr',
+                        data: testData,
+                        backgroundColor: [
+                            '#dc3545',
+                            '#ffc107', 
+                            '#28a745',
+                            '#6c757d'
+                        ],
+                        borderColor: [
+                            '#dc3545',
+                            '#ffc107', 
+                            '#28a745',
+                            '#6c757d'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: false,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `Energiebilanz: ${district.name}`,
+                            font: {
+                                size: 14
+                            }
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'MWh/Jahr'
+                            }
+                        }
+                    }
+                }
+            };
             
-            <!-- Total Energy Metrics -->
-            <div class="row mb-4">
-                <div class="col-md-3">
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <h6 class="card-title text-danger">Gesamtverbrauch</h6>
-                            <h4>${totalDemand.toLocaleString()} MWh</h4>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <h6 class="card-title text-success">EE-Erzeugung</h6>
-                            <h4>${totalGeneration.toLocaleString()} MWh</h4>
-                            <small class="text-muted">${renewableShare}% des Bedarfs</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <h6 class="card-title text-info">EE-Potential</h6>
-                            <h4>${totalPotential.toLocaleString()} MWh</h4>
-                            <small class="text-muted">${potentialUtilization}% genutzt</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <h6 class="card-title text-warning">Autarkie-Grad</h6>
-                            <h4>${renewableShare}%</h4>
-                            <small class="text-muted">Eigenversorgung</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            console.log('Chart config:', config);
             
-            <!-- Districts Overview Table -->
-            <div class="row">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header">
-                            <h6><i class="bi bi-table text-primary"></i> Quartiers-Übersicht</h6>
+            window.districtChart = new Chart(ctx, config);
+            
+            console.log('Chart created successfully:', window.districtChart);
+            
+            // Force render
+            window.districtChart.update('none');
+            console.log('Chart update called');
+            
+            // Check if chart rendered
+            setTimeout(() => {
+                console.log('Checking chart render status...');
+                console.log('Chart data:', window.districtChart.data);
+                console.log('Chart canvas:', window.districtChart.canvas);
+                console.log('Chart context:', window.districtChart.ctx);
+            }, 100);
+            
+        } catch (error) {
+            console.error('=== CHART CREATION FAILED ===');
+            console.error('Error:', error);
+            console.error('Error stack:', error.stack);
+            
+            // Show error message and fallback data
+            canvas.parentElement.innerHTML = `
+                <div class="alert alert-warning">
+                    <h6>Energiedaten für ${district.name}</h6>
+                    <div class="row text-center">
+                        <div class="col-3">
+                            <div class="badge bg-danger p-2 w-100">
+                                <div>Strom</div>
+                                <div>${testData[0]} MWh</div>
+                            </div>
                         </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>Quartier</th>
-                                            <th>Typ</th>
-                                            <th class="text-end">Einwohner</th>
-                                            <th class="text-end">Verbrauch (MWh)</th>
-                                            <th class="text-end">EE-Erzeugung (MWh)</th>
-                                            <th class="text-end">Autarkie (%)</th>
-                                            <th>Bilanz</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${districts.map(district => {
-                                            const energyDemand = district.energy_demand || {};
-                                            const currentGeneration = district.current_generation || {};
-                                            
-                                            const districtDemand = (energyDemand.electricity_mwh || 0) + (energyDemand.heating_mwh || 0) + 
-                                                                  (energyDemand.cooling_mwh || 0) + (energyDemand.transport_mwh || 0);
-                                            const districtGeneration = (currentGeneration.solar_pv_mwh || 0) + (currentGeneration.solar_thermal_mwh || 0) + 
-                                                                      (currentGeneration.small_wind_mwh || 0) + (currentGeneration.biomass_mwh || 0) + 
-                                                                      (currentGeneration.chp_mwh || 0) + (currentGeneration.geothermal_mwh || 0);
-                                            const districtAutarky = districtDemand > 0 ? Math.round((districtGeneration / districtDemand) * 100) : 0;
-                                            const balance = districtGeneration - districtDemand;
-                                            
-                                            return `
-                                                <tr>
-                                                    <td><strong>${district.name}</strong></td>
-                                                    <td><span class="badge bg-secondary">${district.district_type || 'N/A'}</span></td>
-                                                    <td class="text-end">${(district.population || 0).toLocaleString()}</td>
-                                                    <td class="text-end">${districtDemand.toLocaleString()}</td>
-                                                    <td class="text-end">${districtGeneration.toLocaleString()}</td>
-                                                    <td class="text-end">
-                                                        <span class="badge ${districtAutarky >= 100 ? 'bg-success' : districtAutarky >= 50 ? 'bg-warning' : 'bg-danger'}">
-                                                            ${districtAutarky}%
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <span class="badge ${balance >= 0 ? 'bg-success' : 'bg-danger'}">
-                                                            ${balance >= 0 ? '+' : ''}${balance.toFixed(0)} MWh
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            `;
-                                        }).join('')}
-                                    </tbody>
-                                </table>
+                        <div class="col-3">
+                            <div class="badge bg-warning p-2 w-100">
+                                <div>Wärme</div>
+                                <div>${testData[1]} MWh</div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="badge bg-success p-2 w-100">
+                                <div>EE-Erzg</div>
+                                <div>${testData[2]} MWh</div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="badge bg-secondary p-2 w-100">
+                                <div>EE-Pot</div>
+                                <div>${testData[3]} MWh</div>
                             </div>
                         </div>
                     </div>
+                    <small class="text-muted">Chart-Fallback: ${error.message}</small>
                 </div>
-            </div>
-        `;
-        
-    } catch (error) {
-        console.error('Error creating all districts content:', error);
-        return `
-            <div class="alert alert-danger">
-                <h6>Fehler beim Laden der Daten</h6>
-                <p>Die Gesamtübersicht konnte nicht geladen werden.</p>
-            </div>
-        `;
+            `;
+        }
+    }, 500);
+    
+    console.log('=== CHART CREATION SETUP COMPLETE ===');
+}
+function createDistrictEnergyChart(quartier) {
+    const scenarios = energyScenarios[quartier];
+    
+    if (!scenarios || !scenarios.baseline) {
+        return;
     }
+
+    const data = scenarios.baseline;
+    const ctx = document.getElementById('energyBalanceChart');
+    
+    if (!ctx) {
+        Logger.warn('Chart canvas element not found');
+        return;
+    }
+
+    // Destroy existing chart if it exists
+    if (window.energyChart) {
+        window.energyChart.destroy();
+    }
+
+    const chartData = {
+        labels: ['Verbrauch', 'EE-Potenzial'],
+        datasets: [{
+            label: 'Strom (kWh/Jahr)',
+            data: [
+                data.electricity_consumption,
+                data.solar_potential + data.wind_potential
+            ],
+            backgroundColor: ['#e74c3c', '#2ecc71'],
+            borderColor: ['#c0392b', '#27ae60'],
+            borderWidth: 1
+        }, {
+            label: 'Wärme (kWh/Jahr)',
+            data: [
+                data.heat_consumption,
+                data.biomass_potential
+            ],
+            backgroundColor: ['#f39c12', '#3498db'],
+            borderColor: ['#d68910', '#2980b9'],
+            borderWidth: 1
+        }]
+    };
+
+    const config = {
+        type: 'bar',
+        data: chartData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Energie (kWh/Jahr)'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                title: {
+                    display: true,
+                    text: `Energiebilanz: ${quartier}`
+                }
+            }
+        }
+    };
+
+    window.energyChart = new Chart(ctx, config);
 }
 
 // Show detailed analysis modal
 async function showDetailedAnalysis(quartier) {
     console.log('showDetailedAnalysis called with quartier:', quartier);
     try {
-        let content;
-        let title;
+        console.log('Loading detailed district data...');
         
-        if (quartier === 'all') {
-            console.log('Creating overview for all districts...');
-            title = 'Gesamtübersicht aller Quartiere';
-            content = await createAllDistrictsContent();
-        } else {
-            console.log('Loading detailed district data...');
-            
-            // Load district detailed data from API
-            const response = await fetch(`/api/districts/${quartier}/detailed`);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const district = await response.json();
-            console.log('District detailed data loaded:', district);
-            
-            title = `Detailanalyse: ${district.name}`;
-            content = createEnergyFlowContent(district);
+        // Load district detailed data from API
+        const response = await fetch(`/api/districts/${quartier}/detailed`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
+        const district = await response.json();
+        console.log('District detailed data loaded:', district);
         
+        console.log('Creating detailed analysis content...');
+        const content = createEnergyFlowContent(district);
         console.log('Content created, length:', content.length);
+        
         console.log('Showing detailed analysis modal...');
         
         // Create and show modal using correct API
         const modalId = 'detailedAnalysisModal';
-        const modal = modalManager.createModal(modalId, title, content, { 
+        const modal = modalManager.createModal(modalId, `Detailanalyse: ${district.name}`, content, { 
             size: 'modal-xl',
             scrollable: true 
         });
         modalManager.showModal(modalId);
         
-        console.log('Detailed analysis modal shown successfully');
+        // Test Chart.js availability first
+        setTimeout(() => {
+            console.log('Testing Chart.js availability...');
+            console.log('typeof Chart:', typeof Chart);
+            console.log('Chart object:', Chart);
+            
+            if (typeof Chart !== 'undefined') {
+                console.log('Chart.js is available, creating chart...');
+                createDistrictEnergyChart(district);
+            } else {
+                console.error('Chart.js is not available!');
+                // Fallback: Show data without chart
+                const chartContainer = document.getElementById('districtEnergyChart');
+                if (chartContainer) {
+                    chartContainer.parentElement.innerHTML = `
+                        <div class="alert alert-warning">
+                            <h6>Energiedaten für ${district.name}</h6>
+                            <div class="row">
+                                <div class="col-6">Strom: ${district.energy_demand?.electricity_mwh || 0} MWh</div>
+                                <div class="col-6">Wärme: ${district.energy_demand?.heating_mwh || 0} MWh</div>
+                            </div>
+                            <small>Chart.js konnte nicht geladen werden - Daten werden als Text angezeigt</small>
+                        </div>
+                    `;
+                }
+            }
+        }, 1500); // Noch längeres Timeout
+        
+        console.log('Detailed analysis modal should be shown now');
 
     } catch (error) {
         console.error('Error in showDetailedAnalysis:', error);
@@ -725,50 +806,20 @@ async function showStakeholderAnalysis(quartier) {
         const content = createStakeholderContent(quartier);
         console.log('Content created, length:', content.length);
         
-        console.log('Showing stakeholder modal...');
+        const title = quartier === 'all' ? 'Stakeholder-Matrix' : `Stakeholder-Analyse: ${quartier}`;
+        console.log('Showing modal with title:', title);
         
         // Create and show modal using correct API
         const modalId = 'stakeholderModal';
-        const modal = modalManager.createModal(modalId, `Stakeholder: ${quartier}`, content, { size: 'modal-lg' });
+        const modal = modalManager.createModal(modalId, title, content, { size: 'modal-lg' });
         modalManager.showModal(modalId);
         
-        console.log('Stakeholder modal should be shown now');
+        console.log('Modal should be shown now');
 
     } catch (error) {
         console.error('Error in showStakeholderAnalysis:', error);
         Logger.error('Error showing stakeholder analysis:', error);
         notificationManager.showError('Fehler beim Laden der Stakeholder-Analyse');
-    }
-}
-
-// Show scenario analysis modal  
-async function showScenarioAnalysis(quartier) {
-    console.log('showScenarioAnalysis called with quartier:', quartier);
-    try {
-        // Ensure data is loaded
-        console.log('Current energyScenarios keys:', Object.keys(energyScenarios));
-        if (Object.keys(energyScenarios).length === 0) {
-            console.log('Loading energy scenarios...');
-            await loadEnergyScenarios();
-        }
-
-        console.log('Creating scenario content...');
-        const content = createScenarioContent(quartier);
-        console.log('Content created, length:', content.length);
-        
-        console.log('Showing scenario modal...');
-        
-        // Create and show modal using correct API
-        const modalId = 'scenarioModal';
-        const modal = modalManager.createModal(modalId, `Szenarien: ${quartier}`, content, { size: 'modal-lg' });
-        modalManager.showModal(modalId);
-        
-        console.log('Scenario modal should be shown now');
-
-    } catch (error) {
-        console.error('Error in showScenarioAnalysis:', error);
-        Logger.error('Error showing scenario analysis:', error);
-        notificationManager.showError('Fehler beim Laden der Szenario-Analyse');
     }
 }
 
@@ -827,9 +878,10 @@ async function initializeAnalysis() {
     }
 }
 
-// Global exports
+// Export functions for global access
 window.showDetailedAnalysis = showDetailedAnalysis;
 window.showStakeholderAnalysis = showStakeholderAnalysis;
-window.showScenarioAnalysis = showScenarioAnalysis;
+window.showScenarioComparison = showScenarioComparison;
+window.initializeAnalysis = initializeAnalysis;
 window.showScenarioComparison = showScenarioComparison;
 window.initializeAnalysis = initializeAnalysis;
