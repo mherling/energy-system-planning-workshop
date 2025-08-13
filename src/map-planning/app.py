@@ -339,6 +339,92 @@ async def get_system_config():
         "quartier_colors": {f"quartier_{i}": data_manager.get_quartier_color(f"quartier_{i}") for i in range(1, 9)}
     }
 
+# Configuration API - NEW ENDPOINTS
+@app.get("/api/config/quartiers")
+async def get_quartier_config():
+    """Get complete quartier configuration from YAML"""
+    if not data_manager.config:
+        raise HTTPException(status_code=500, detail="Quartier configuration not loaded")
+    
+    return {
+        "quartiers": data_manager.config.get("quartiers", {}),
+        "district_type_defaults": data_manager.config.get("district_type_defaults", {}),
+        "schema": data_manager.config.get("schema", {})
+    }
+
+@app.get("/api/config/system")
+async def get_system_config_detailed():
+    """Get complete system configuration from YAML"""
+    if not data_manager.system_config:
+        raise HTTPException(status_code=500, detail="System configuration not loaded")
+    
+    return {
+        "energy_scenarios": data_manager.system_config.get("energy_scenarios", {}),
+        "emission_factors": data_manager.system_config.get("emission_factors", {}),
+        "technical_parameters": data_manager.system_config.get("technical_parameters", {}),
+        "regional_parameters": data_manager.system_config.get("regional_parameters", {}),
+        "analysis_settings": data_manager.system_config.get("analysis_settings", {}),
+        "quartier_colors": data_manager.system_config.get("quartier_colors", {})
+    }
+
+@app.get("/api/config/quartiers/{quartier_key}")
+async def get_quartier_details_config(quartier_key: str):
+    """Get detailed configuration for a specific quartier"""
+    if not data_manager.config:
+        raise HTTPException(status_code=500, detail="Quartier configuration not loaded")
+    
+    quartiers = data_manager.config.get("quartiers", {})
+    if quartier_key not in quartiers:
+        raise HTTPException(status_code=404, detail=f"Quartier '{quartier_key}' not found in configuration")
+    
+    quartier_data = quartiers[quartier_key]
+    district_type = quartier_data.get("district_type", "mixed")
+    defaults = data_manager.config.get("district_type_defaults", {}).get(district_type, {})
+    
+    return {
+        "key": quartier_key,
+        "quartier_data": quartier_data,
+        "district_type_defaults": defaults,
+        "schema": data_manager.config.get("schema", {})
+    }
+
+@app.get("/api/config/technologies")
+async def get_technology_templates_config():
+    """Get technology templates from configuration"""
+    if not data_manager.config:
+        raise HTTPException(status_code=500, detail="Quartier configuration not loaded")
+    
+    return {
+        "technology_templates": data_manager.config.get("technology_templates", {}),
+        "categories": ["generation", "storage", "conversion"],
+        "schema": data_manager.config.get("schema", {})
+    }
+
+@app.get("/api/config/stakeholder-templates")
+async def get_stakeholder_templates_config():
+    """Get stakeholder templates from configuration"""
+    if not data_manager.config:
+        raise HTTPException(status_code=500, detail="Quartier configuration not loaded")
+    
+    return {
+        "stakeholder_templates": data_manager.config.get("stakeholder_templates", {}),
+        "schema": data_manager.config.get("schema", {})
+    }
+
+@app.get("/api/config/energy-scenarios")
+async def get_energy_scenarios_detailed():
+    """Get detailed energy price scenarios"""
+    if not data_manager.system_config:
+        raise HTTPException(status_code=500, detail="System configuration not loaded")
+    
+    scenarios = data_manager.system_config.get("energy_scenarios", {})
+    return {
+        "scenarios": scenarios,
+        "scenario_count": len(scenarios),
+        "years": [2025, 2030, 2040, 2050],
+        "price_types": ["electricity_prices", "gas_prices", "heat_prices", "co2_prices"]
+    }
+
 if __name__ == "__main__":
     uvicorn.run(
         "app:app",

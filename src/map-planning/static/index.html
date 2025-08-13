@@ -33,12 +33,15 @@
                 <a class="nav-link" href="#" onclick="showScenarios()">
                     <i class="bi bi-graph-up"></i> Szenarien
                 </a>
+                <a class="nav-link" href="#" onclick="showConfiguration()">
+                    <i class="bi bi-gear"></i> Konfiguration
+                </a>
             </div>
         </div>
     </nav>
 
     <!-- Main Container -->
-    <div class="container-fluid mt-3 main-container">
+    <div class="container-fluid mt-3 main-container" id="content">
         <div class="row h-100">
             <!-- Map Section -->
             <div class="col-lg-4 h-100">
@@ -198,17 +201,20 @@
     <script src="/static/js/core/data-loader.js"></script>
     <script src="/static/js/core/navigation.js"></script>
     <script src="/static/js/core/analysis-coordinator.js"></script>
+    <script src="/static/js/core/config-coordinator.js"></script>
     
     <!-- Data Layer -->
     <script src="/static/js/data/districts-data.js"></script>
     <script src="/static/js/data/stakeholders-data.js"></script>
     <script src="/static/js/data/scenarios-data.js"></script>
+    <script src="/static/js/data/config-data.js"></script>
     
     <!-- Presentation Layer -->
     <script src="/static/js/presentation/overview-view.js"></script>
     <script src="/static/js/presentation/views/district-view.js"></script>
     <script src="/static/js/presentation/views/stakeholder-view.js"></script>
     <script src="/static/js/presentation/views/scenario-view.js"></script>
+    <script src="/static/js/presentation/views/config-view.js"></script>
     
     <!-- Template Modules -->
     <script src="/static/js/templates/template-helpers.js"></script>

@@ -111,9 +111,30 @@ async function showScenarios() {
     }
 }
 
+// Show configuration dashboard
+async function showConfiguration() {
+    console.log('showConfiguration called!');
+    try {
+        // Check if config manager exists
+        if (typeof window.configManager === 'undefined') {
+            console.error('ConfigManager not found!');
+            notificationManager.showError('Konfiguration-Manager nicht gefunden');
+            return;
+        }
+        
+        console.log('Calling configManager.showDashboard...');
+        await window.configManager.showDashboard();
+        console.log('Configuration dashboard shown');
+    } catch (error) {
+        console.error('Error showing configuration:', error);
+        notificationManager.showError('Fehler beim Anzeigen der Konfiguration');
+    }
+}
+
 // Export to global scope
 window.selectDistrictFromOverview = selectDistrictFromOverview;
 window.showOverview = showOverview;
 window.showToast = showToast;
 window.showStakeholders = showStakeholders;
 window.showScenarios = showScenarios;
+window.showConfiguration = showConfiguration;
