@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energiesystemplanung Zittau</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <style>
+        body {
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+        }
+        
+        #map {
+            height: calc(100vh - 120px); /* Viewport height minus navbar and margin */
+            min-height: 400px; /* Minimum height for small screens */
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .main-container {
+            height: calc(100vh - 80px); /* Full height minus navbar */
+            overflow: hidden;
+        }
+        
+        .district-info {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .stakeholder-card {
+            transition: transform 0.2s;
+            border-left: 4px solid #007bff;
+        }
+        
+        .stakeholder-card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .energy-metric {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .scenario-card {
+            border: 2px solid transparent;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .scenario-card:hover {
+            border-color: #007bff;
+            transform: translateY(-3px);
+        }
+        
+        .scenario-card.active {
+            border-color: #28a745;
+            background-color: #f8fff9;
+        }
+
+        .grid-legend {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="#">
+                <i class="bi bi-grid-3x3-gap-fill"></i>
+                Energiesystemplanung Zittau
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="#" onclick="showOverview()">
+                    <i class="bi bi-house-door"></i> Übersicht
+                </a>
+                <a class="nav-link" href="#" onclick="showStakeholders()">
+                    <i class="bi bi-people"></i> Stakeholder
+                </a>
+                <a class="nav-link" href="#" onclick="showScenarios()">
+                    <i class="bi bi-graph-up"></i> Szenarien
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container-fluid mt-3 main-container">
+        <div class="row h-100">
+            <!-- Map Section -->
+            <div class="col-lg-4 h-100">
+                <div class="position-relative h-100">
+                    <div id="map"></div>
+                    <div class="grid-legend">
+                        <h6 class="mb-2">Quartiere Zittau</h6>
+                        <div><span style="color: #28a745;">●</span> Hoher Verbrauch</div>
+                        <div><span style="color: #ffc107;">●</span> Mittlerer Verbrauch</div>
+                        <div><span style="color: #17a2b8;">●</span> Niedriger Verbrauch</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Selected District Panel -->
+            <div class="col-lg-4 h-100" style="overflow-y: auto;">
+                <div class="card h-100">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-geo-alt-fill"></i>
+                            <span id="selectedDistrictTitle">Quartier auswählen</span>
+                        </h5>
+                    </div>
+                    <div class="card-body" id="selectedDistrictContent">
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-cursor text-muted" style="font-size: 3rem;"></i>
+                            <p class="mt-3">Klicken Sie auf ein Quartier in der Karte, um Details anzuzeigen</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Total Overview Panel -->
+            <div class="col-lg-4 h-100" style="overflow-y: auto;">
+                <div class="card h-100">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-grid-3x3-gap-fill"></i>
+                            Gesamtübersicht Zittau
+                        </h5>
+                    </div>
+                    <div class="card-body" id="totalOverviewContent">
+                        <div class="text-center">
+                            <div class="spinner-border text-success" role="status">
+                                <span class="visually-hidden">Wird geladen...</span>
+                            </div>
+                            <p class="mt-3">Gesamtdaten werden geladen...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stakeholder Modal -->
+    <div class="modal fade" id="stakeholderModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-people-fill"></i>
+                        Stakeholder Matrix
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="stakeholderContent">
+                        <!-- Content loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scenario Modal -->
+    <div class="modal fade" id="scenarioModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-graph-up"></i>
+                        Energiepreis-Szenarien
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row" id="scenarioContent">
+                        <!-- Content loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail Analysis Modal -->
+    <div class="modal fade" id="energyFlowModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-bar-chart-line"></i>
+                        Detailanalyse
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="energyFlowContent" style="min-height: 600px;">
+                        <div class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Laden...</span>
+                            </div>
+                            <p class="mt-3">Detailanalyse wird geladen...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analysis Modal -->
+    <div class="modal fade" id="analysisModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title">
+                        <i class="bi bi-bar-chart-fill"></i>
+                        Energie-Analyse
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="analysisContent">
+                        <!-- Content loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="toast" class="toast" role="alert">
+            <div class="toast-header">
+                <strong class="me-auto">Information</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="toastBody">
+                <!-- Toast message -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        // Global variables
+        let map;
+        let districts = [];
+        let stakeholders = [];
+        let energyScenarios = {};
+        let currentDistrict = null;
+        let districtLayers = {};
+
+        // Initialize map
+        function initializeMap() {
+            // Zittau coordinates
+            const zittauCenter = [50.8994, 14.8076];
+            
+            map = L.map('map').setView(zittauCenter, 14);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            
+            // Handle window resize to ensure map displays correctly
+            window.addEventListener('resize', function() {
+                setTimeout(function() {
+                    map.invalidateSize();
+                }, 100);
+            });
+            
+            // Ensure map size is correct after initial load
+            setTimeout(function() {
+                map.invalidateSize();
+            }, 500);
+        }
+
+        // Load all data
+        async function loadDistricts() {
+            try {
+                await Promise.all([
+                    loadDistricts(),
+                    loadStakeholders(),
+                    loadEnergyScenarios(),
+                    loadEnergyMetrics()
+                ]);
+                console.log('All data loaded successfully');
+            } catch (error) {
+                console.error('Error loading data:', error);
+                showToast('Fehler beim Laden der Daten', 'error');
+            }
+        }
+
+        // Load districts and create quartiers
+        async function loadDistricts() {
+            try {
+                const response = await fetch('/api/districts');
+                districts = await response.json();
+                createQuartiersOnMap();
+                console.log(`Loaded ${districts.length} quartiers`);
+            } catch (error) {
+                console.error('Error loading districts:', error);
+            }
+        }
+
+        // Create quartier polygons on map with individual colors
+        async function createQuartiersOnMap() {
+            try {
+                // Load system config to get colors
+                const colorResponse = await fetch('/api/system-config');
+                const systemConfig = await colorResponse.json();
+                const quartierColors = systemConfig.quartier_colors || {};
+                
+                districts.forEach((district) => {
+                    // Get specific color for this quartier
+                    const color = quartierColors[district.id] || '#3388ff';
+                    
+                    // Create polygon from GeoJSON geometry
+                    const coordinates = district.geometry.coordinates[0][0]; // Get first polygon ring
+                    const latLngs = coordinates.map(coord => [coord[1], coord[0]]); // Convert [lon, lat] to [lat, lon]
+                    
+                    const polygon = L.polygon(latLngs, {
+                        color: color,
+                        weight: 2,
+                        fillColor: color,
+                        fillOpacity: 0.3
+                    }).addTo(map);
+                    
+                    // Parse energy data
+                    const energyDemand = typeof district.energy_demand === 'string' 
+                        ? JSON.parse(district.energy_demand) 
+                        : district.energy_demand || {};
+                    const renewablePotential = typeof district.renewable_potential === 'string' 
+                        ? JSON.parse(district.renewable_potential) 
+                        : district.renewable_potential || {};
+                    
+                    polygon.bindPopup(`
+                        <div style="border-left: 4px solid ${color}; padding-left: 10px;">
+                            <strong>${district.name}</strong><br>
+                            <small class="text-muted">${district.district_type.toUpperCase()}</small><br><br>
+                            
+                            <strong>Bevölkerung:</strong> ${district.population.toLocaleString()}<br>
+                            <strong>Fläche:</strong> ${district.area_km2} km²<br><br>
+                            
+                            <strong>Energiebedarf:</strong><br>
+                            • Strom: ${(energyDemand.electricity_mwh || 0).toLocaleString()} MWh/Jahr<br>
+                            • Wärme: ${(energyDemand.heating_mwh || 0).toLocaleString()} MWh/Jahr<br>
+                            • Gesamt: ${(energyDemand.total_annual_mwh || 0).toLocaleString()} MWh/Jahr<br><br>
+                            
+                            <strong>EE-Potenzial:</strong><br>
+                            • Solar PV: ${(renewablePotential.solar_pv_mwh || 0).toLocaleString()} MWh/Jahr<br>
+                            • Gesamt: ${(renewablePotential.total_potential_mwh || 0).toLocaleString()} MWh/Jahr
+                        </div>
+                    `);
+                    
+                    polygon.on('click', () => selectDistrict(district));
+                    
+                    districtLayers[district.id] = polygon;
+                });
+                
+                // Update legend with new color scheme
+                updateLegend(quartierColors);
+                
+            } catch (error) {
+                console.error('Error creating quartiers:', error);
+            }
+        }
+        
+        // Update legend with quartier colors
+        function updateLegend(quartierColors) {
+            const legend = document.querySelector('.grid-legend');
+            let legendHtml = '<h6 class="mb-2">Quartiere Zittau</h6>';
+            
+            // Add each quartier with its color
+            districts.forEach(district => {
+                const color = quartierColors[district.id] || '#3388ff';
+                legendHtml += `<div><span style="color: ${color}; font-size: 16px;">●</span> ${district.name}</div>`;
+            });
+            
+            legend.innerHTML = legendHtml;
+        }
+
+        // Select district
+        function selectDistrict(district) {
+            currentDistrict = district;
+            displayDistrictDetails(district);
+            
+            // Highlight selected district
+            Object.values(districtLayers).forEach(layer => {
+                layer.setStyle({ weight: 2 });
+            });
+            districtLayers[district.id].setStyle({ weight: 4 });
+        }
+
+        // Display district details in selected district panel
+        function displayDistrictDetails(district) {
+            // Update title
+            document.getElementById('selectedDistrictTitle').textContent = district.name;
+            
+            // Get container
+            const container = document.getElementById('selectedDistrictContent');
+            
+            // Parse JSON data safely
+            const energyDemand = typeof district.energy_demand === 'string' 
+                ? JSON.parse(district.energy_demand) 
+                : district.energy_demand || {};
+            const renewablePotential = typeof district.renewable_potential === 'string' 
+                ? JSON.parse(district.renewable_potential) 
+                : district.renewable_potential || {};
+            const additionalData = typeof district.additional_data === 'string' 
+                ? JSON.parse(district.additional_data) 
+                : district.additional_data || {};
+            const buildingTypes = typeof district.building_types === 'string' 
+                ? JSON.parse(district.building_types) 
+                : district.building_types || {};
+            
+            const totalDemand = (energyDemand.electricity_mwh || 0) + (energyDemand.heating_mwh || 0);
+            const totalPotential = (renewablePotential.solar_pv_mwh || 0) + 
+                                 (renewablePotential.solar_thermal_mwh || 0) + 
+                                 (renewablePotential.small_wind_mwh || 0) + 
+                                 (renewablePotential.biomass_mwh || 0) + 
+                                 (renewablePotential.geothermal_mwh || 0);
+            
+            container.innerHTML = `
+                <!-- Basic Info -->
+                <div class="row mb-4">
+                    <div class="col-6">
+                        <div class="text-center p-3 bg-light rounded">
+                            <h6 class="text-muted mb-1">Einwohner</h6>
+                            <h4 class="text-primary mb-0">${district.population.toLocaleString()}</h4>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center p-3 bg-light rounded">
+                            <h6 class="text-muted mb-1">Fläche</h6>
+                            <h4 class="text-primary mb-0">${district.area_km2} km²</h4>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Description -->
+                ${district.description ? `
+                    <div class="alert alert-info mb-4">
+                        <small>${district.description}</small>
+                    </div>
+                ` : ''}
+                
+                <!-- Energy Metrics -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header bg-danger text-white">
+                                <h6 class="mb-0"><i class="bi bi-lightning-charge"></i> Energiebedarf</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row text-center">
+                                    <div class="col-6">
+                                        <small class="text-muted">Strom</small>
+                                        <div class="fw-bold fs-5">${(energyDemand.electricity_mwh || 0).toLocaleString()}</div>
+                                        <small class="text-muted">MWh/Jahr</small>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">Wärme</small>
+                                        <div class="fw-bold fs-5">${(energyDemand.heating_mwh || 0).toLocaleString()}</div>
+                                        <small class="text-muted">MWh/Jahr</small>
+                                    </div>
+                                </div>
+                                <hr>
+                                <div class="text-center">
+                                    <small class="text-muted">Gesamtbedarf</small>
+                                    <div class="fw-bold fs-4 text-danger">${totalDemand.toLocaleString()} MWh</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header bg-success text-white">
+                                <h6 class="mb-0"><i class="bi bi-sun"></i> EE-Potential</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row text-center mb-2">
+                                    <div class="col-6">
+                                        <small class="text-muted">Solar PV</small>
+                                        <div class="fw-bold">${(renewablePotential.solar_pv_mwh || 0).toFixed(1)}</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">Solar Thermal</small>
+                                        <div class="fw-bold">${(renewablePotential.solar_thermal_mwh || 0).toFixed(1)}</div>
+                                    </div>
+                                </div>
+                                <div class="row text-center mb-2">
+                                    <div class="col-6">
+                                        <small class="text-muted">Kleinwind</small>
+                                        <div class="fw-bold">${(renewablePotential.small_wind_mwh || 0).toFixed(1)}</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">Biomasse</small>
+                                        <div class="fw-bold">${(renewablePotential.biomass_mwh || 0).toFixed(1)}</div>
+                                    </div>
+                                </div>
+                                <hr>
+                                <div class="text-center">
+                                    <small class="text-muted">Gesamtpotential</small>
+                                    <div class="fw-bold fs-4 text-success">${totalPotential.toFixed(1)} MWh</div>
+                                    <small class="text-muted">
+                                        ${totalDemand > 0 ? Math.round((totalPotential / totalDemand) * 100) : 0}% des Bedarfs
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Primary Energy Sources -->
+                ${additionalData.primary_energy_mix ? `
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header bg-warning text-dark">
+                                    <h6 class="mb-0"><i class="bi bi-fire"></i> Primärenergie-Mix</h6>
+                                </div>
+                                <div class="card-body">
+                                    ${Object.entries(additionalData.primary_energy_mix).map(([source, percentage]) => `
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="small">${getEnergySourceDisplayName(source)}</span>
+                                            <div class="d-flex align-items-center">
+                                                <div class="progress me-2" style="width: 60px; height: 10px;">
+                                                    <div class="progress-bar" style="width: ${percentage}%; background-color: ${getEnergySourceColor(source)};"></div>
+                                                </div>
+                                                <span class="small fw-bold">${percentage}%</span>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <!-- Building Types -->
+                ${Object.keys(buildingTypes).length > 0 ? `
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header bg-info text-white">
+                                    <h6 class="mb-0"><i class="bi bi-buildings"></i> Gebäudetypen</h6>
+                                </div>
+                                <div class="card-body">
+                                    ${Object.entries(buildingTypes).map(([type, count]) => `
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span class="small">${type}</span>
+                                            <span class="fw-bold">${count}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <!-- Action Buttons -->
+                <div class="d-grid gap-2">
+                    <button class="btn btn-primary" onclick="showDetailAnalysis('${district.id}')">
+                        <i class="bi bi-bar-chart-line"></i> Detailanalyse
+                    </button>
+                </div>
+            `;
+        }
+
+        // Update function name to match new button
+        async function showDetailAnalysis(districtId) {
+            console.log('showDetailAnalysis called with districtId:', districtId);
+            try {
+                // Show modal with loading state
+                const modal = new bootstrap.Modal(document.getElementById('energyFlowModal'));
+                modal.show();
+                
+                // Load energy flow data
+                const response = await fetch(`/api/districts/${districtId}/energy-flows`);
+                if (!response.ok) {
+                    throw new Error('Daten konnten nicht geladen werden');
+                }
+                
+                const energyFlowData = await response.json();
+                console.log('Energy flow data loaded:', energyFlowData);
+                
+                // Create energy flow content
+                createEnergyFlowContent(energyFlowData);
+                
+            } catch (error) {
+                console.error('Error loading energy flow data:', error);
+                document.getElementById('energyFlowContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Fehler:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Make function globally available
+        window.showDetailAnalysis = showDetailAnalysis;
+
+        // Load and display total overview for all districts
+        async function loadTotalOverview() {
+            try {
+                const response = await fetch('/api/analysis/energy-balance');
+                if (!response.ok) {
+                    throw new Error('Gesamtdaten konnten nicht geladen werden');
+                }
+                
+                const data = await response.json();
+                displayTotalOverview(data);
+                
+            } catch (error) {
+                console.error('Error loading total overview:', error);
+                document.getElementById('totalOverviewContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Fehler:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Display total overview with same structure as district details
+        function displayTotalOverview(data) {
+            const container = document.getElementById('totalOverviewContent');
+            
+            // Get the data from the API response
+            const totalDemand = data.total_consumption_mwh || 0;
+            const totalPotential = data.total_production_potential_mwh || 0;
+            const balanceMWh = data.balance_mwh || 0;
+            const districtsCount = data.districts_count || 0;
+            
+            // Calculate some derived values
+            const selfSufficiencyPct = totalDemand > 0 ? Math.round((totalPotential / totalDemand) * 100) : 0;
+            const avgConsumptionPerDistrict = districtsCount > 0 ? (totalDemand / districtsCount).toFixed(1) : 0;
+            const avgPotentialPerDistrict = districtsCount > 0 ? (totalPotential / districtsCount).toFixed(1) : 0;
+            
+            container.innerHTML = `
+                <!-- Basic Info -->
+                <div class="row mb-4">
+                    <div class="col-6">
+                        <div class="text-center p-3 bg-light rounded">
+                            <h6 class="text-muted mb-1">Anzahl Quartiere</h6>
+                            <h4 class="text-success mb-0">${districtsCount}</h4>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center p-3 bg-light rounded">
+                            <h6 class="text-muted mb-1">Autarkiegrad</h6>
+                            <h4 class="text-success mb-0">${selfSufficiencyPct}%</h4>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Energy Metrics -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header bg-danger text-white">
+                                <h6 class="mb-0"><i class="bi bi-lightning-charge"></i> Gesamtenergiebedarf</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row text-center">
+                                    <div class="col-6">
+                                        <small class="text-muted">Gesamtbedarf</small>
+                                        <div class="fw-bold fs-5">${totalDemand.toLocaleString()}</div>
+                                        <small class="text-muted">MWh/Jahr</small>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">Ø pro Quartier</small>
+                                        <div class="fw-bold fs-5">${avgConsumptionPerDistrict}</div>
+                                        <small class="text-muted">MWh/Jahr</small>
+                                    </div>
+                                </div>
+                                <hr>
+                                <div class="text-center">
+                                    <small class="text-muted">Gesamtverbrauch</small>
+                                    <div class="fw-bold fs-4 text-danger">${totalDemand.toLocaleString()} MWh</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header bg-success text-white">
+                                <h6 class="mb-0"><i class="bi bi-sun"></i> Gesamt EE-Potential</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row text-center">
+                                    <div class="col-6">
+                                        <small class="text-muted">Gesamtpotential</small>
+                                        <div class="fw-bold fs-5">${totalPotential.toLocaleString()}</div>
+                                        <small class="text-muted">MWh/Jahr</small>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">Ø pro Quartier</small>
+                                        <div class="fw-bold fs-5">${avgPotentialPerDistrict}</div>
+                                        <small class="text-muted">MWh/Jahr</small>
+                                    </div>
+                                </div>
+                                <hr>
+                                <div class="text-center">
+                                    <small class="text-muted">Deckungsgrad des Bedarfs</small>
+                                    <div class="fw-bold fs-4 text-success">${selfSufficiencyPct}%</div>
+                                    <small class="text-muted">
+                                        ${totalPotential.toFixed(1)} MWh Potential
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- District Summary -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0"><i class="bi bi-list"></i> Quartiere-Übersicht</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Quartier</th>
+                                                <th class="text-end">Bedarf</th>
+                                                <th class="text-end">Potential</th>
+                                                <th class="text-end">Bilanz</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${(data.district_details || []).map(district => {
+                                                const balance = district.balance_mwh || 0;
+                                                return `
+                                                    <tr>
+                                                        <td class="fw-bold">${district.name}</td>
+                                                        <td class="text-end">${(district.consumption_mwh || 0).toFixed(0)} MWh</td>
+                                                        <td class="text-end">${(district.production_potential_mwh || 0).toFixed(0)} MWh</td>
+                                                        <td class="text-end">
+                                                            <span class="badge ${balance >= 0 ? 'bg-success' : 'bg-warning'}">
+                                                                ${balance >= 0 ? '+' : ''}${balance.toFixed(0)} MWh
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                `;
+                                            }).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Overall Balance -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header ${balanceMWh >= 0 ? 'bg-success' : 'bg-warning'} text-white">
+                                <h6 class="mb-0">
+                                    <i class="bi bi-${balanceMWh >= 0 ? 'check-circle' : 'exclamation-triangle'}"></i>
+                                    Gesamtenergiebilanz
+                                </h6>
+                            </div>
+                            <div class="card-body text-center">
+                                <h3 class="mb-3 ${balanceMWh >= 0 ? 'text-success' : 'text-warning'}">
+                                    ${balanceMWh >= 0 ? '+' : ''}${balanceMWh.toFixed(0)} MWh
+                                </h3>
+                                <p class="mb-0">
+                                    ${balanceMWh >= 0 ? 
+                                        'Zittau kann sich vollständig mit erneuerbaren Energien versorgen!' : 
+                                        'Zusätzliche Energiequellen oder Effizienzmaßnahmen erforderlich.'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+
+        // Load stakeholders
+        async function loadStakeholders() {
+            try {
+                const response = await fetch('/api/stakeholders');
+                stakeholders = await response.json();
+                console.log(`Loaded ${stakeholders.length} stakeholders`);
+            } catch (error) {
+                console.error('Error loading stakeholders:', error);
+            }
+        }
+
+        // Load energy scenarios
+        async function loadEnergyScenarios() {
+            try {
+                const response = await fetch('/api/energy-scenarios');
+                energyScenarios = await response.json();
+                console.log('Loaded energy scenarios:', Object.keys(energyScenarios));
+            } catch (error) {
+                console.error('Error loading energy scenarios:', error);
+            }
+        }
+
+        // Load energy metrics
+        async function loadEnergyMetrics() {
+            try {
+                const response = await fetch('/api/analysis/energy-balance');
+                const data = await response.json();
+                
+                document.getElementById('totalConsumption').textContent = 
+                    `${Math.round(data.total_consumption_mwh)} MWh`;
+                document.getElementById('totalProduction').textContent = 
+                    `${Math.round(data.total_production_potential_mwh)} MWh`;
+            } catch (error) {
+                console.error('Error loading energy metrics:', error);
+            }
+        }
+
+        // Show stakeholders
+        function showStakeholders() {
+            const container = document.getElementById('stakeholderContent');
+            
+            let html = '<div class="row">';
+            stakeholders.forEach(stakeholder => {
+                const influenceColor = stakeholder.influence_level === 'high' ? 'success' : 
+                                     stakeholder.influence_level === 'low' ? 'warning' : 'info';
+                
+                html += `
+                    <div class="col-md-6 mb-3">
+                        <div class="card stakeholder-card">
+                            <div class="card-body">
+                                <h6 class="card-title">${stakeholder.name}</h6>
+                                <p class="card-text small">${stakeholder.category}</p>
+                                <span class="badge bg-${influenceColor}">${stakeholder.influence_level} Einfluss</span>
+                                <span class="badge bg-secondary">${stakeholder.participation_willingness} Bereitschaft</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            
+            container.innerHTML = html;
+            new bootstrap.Modal(document.getElementById('stakeholderModal')).show();
+        }
+
+        // Show scenarios
+        function showScenarios() {
+            const container = document.getElementById('scenarioContent');
+            
+            let html = '';
+            Object.entries(energyScenarios).forEach(([key, scenario]) => {
+                html += `
+                    <div class="col-md-4 mb-3">
+                        <div class="card scenario-card h-100" onclick="selectScenario('${key}')">
+                            <div class="card-body">
+                                <h6 class="card-title">${scenario.name}</h6>
+                                <p class="card-text small">${scenario.description}</p>
+                                <div class="mt-3">
+                                    <small class="text-muted">Strom 2030:</small>
+                                    <div class="fw-bold">${scenario.electricity_prices['2030']} €/kWh</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+            new bootstrap.Modal(document.getElementById('scenarioModal')).show();
+        }
+
+        // Show energy balance
+        async function showEnergyBalance() {
+            try {
+                const [energyResponse, co2Response] = await Promise.all([
+                    fetch('/api/analysis/energy-balance'),
+                    fetch('/api/analysis/co2-emissions')
+                ]);
+                
+                const energyData = await energyResponse.json();
+                const co2Data = await co2Response.json();
+                
+                const container = document.getElementById('analysisContent');
+                container.innerHTML = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Energiebilanz</h6>
+                            <ul class="list-unstyled">
+                                <li><strong>Gesamtverbrauch:</strong> ${Math.round(energyData.total_consumption_mwh)} MWh</li>
+                                <li><strong>EE-Potenzial:</strong> ${Math.round(energyData.total_production_potential_mwh)} MWh</li>
+                                <li><strong>Bilanz:</strong> ${Math.round(energyData.balance_mwh)} MWh</li>
+                                <li><strong>Autarkiegrad:</strong> ${(energyData.self_sufficiency_ratio * 100).toFixed(1)}%</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>CO2-Emissionen</h6>
+                            <ul class="list-unstyled">
+                                <li><strong>Gesamtemissionen:</strong> ${Math.round(co2Data.total_emissions_tons)} t CO2/Jahr</li>
+                                <li><strong>Emissionsfaktor:</strong> ${co2Data.emission_factor_kg_per_kwh} kg CO2/kWh</li>
+                                <li><strong>Raster analysiert:</strong> ${co2Data.districts_analyzed}</li>
+                            </ul>
+                        </div>
+                    </div>
+                `;
+                
+                new bootstrap.Modal(document.getElementById('analysisModal')).show();
+            } catch (error) {
+                console.error('Error loading analysis:', error);
+                showToast('Fehler beim Laden der Analyse', 'error');
+            }
+        }
+
+        // Show CO2 analysis
+        function showCO2Analysis() {
+            showEnergyBalance(); // Same modal, different trigger
+        }
+
+        // Select scenario
+        function selectScenario(scenarioKey) {
+            const scenario = energyScenarios[scenarioKey];
+            showToast(`Szenario "${scenario.name}" ausgewählt`, 'success');
+            
+            // Store selected scenario
+            localStorage.setItem('selectedEnergyScenario', JSON.stringify({key: scenarioKey, ...scenario}));
+        }
+
+        // Edit district data
+        function editDistrictData(districtId) {
+            const district = districts.find(d => d.id === districtId);
+            if (!district) return;
+            
+            const newConsumption = prompt(`Neuer Energieverbrauch für ${district.name} (MWh/Jahr):`, district.energy_consumption || 0);
+            if (newConsumption !== null) {
+                // Update via API
+                updateDistrictEnergyData(districtId, {energy_consumption: parseFloat(newConsumption)});
+            }
+        }
+
+        // Update district energy data
+        async function updateDistrictEnergyData(districtId, energyData) {
+            try {
+                const response = await fetch(`/api/districts/${districtId}/energy-data`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(energyData)
+                });
+                
+                if (response.ok) {
+                    showToast('Daten erfolgreich aktualisiert', 'success');
+                    loadData(); // Reload data
+                } else {
+                    throw new Error('Update failed');
+                }
+            } catch (error) {
+                console.error('Error updating district data:', error);
+                showToast('Fehler beim Aktualisieren der Daten', 'error');
+            }
+        }
+
+        // Show overview
+        function showOverview() {
+            // Reset map view and clear selections
+            map.setView([50.8994, 14.8076], 14);
+            Object.values(districtLayers).forEach(layer => {
+                layer.setStyle({ weight: 2 });
+            });
+            currentDistrict = null;
+            document.getElementById('districtDetails').innerHTML = '<p class="text-muted">Wählen Sie ein Raster auf der Karte aus</p>';
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'info') {
+            const toastElement = document.getElementById('toast');
+            const toastBody = document.getElementById('toastBody');
+            
+            toastBody.textContent = message;
+            
+            // Remove previous classes
+            toastElement.classList.remove('text-bg-success', 'text-bg-danger', 'text-bg-warning', 'text-bg-info');
+            
+            // Add appropriate class
+            if (type === 'success') toastElement.classList.add('text-bg-success');
+            else if (type === 'error') toastElement.classList.add('text-bg-danger');
+            else if (type === 'warning') toastElement.classList.add('text-bg-warning');
+            else toastElement.classList.add('text-bg-info');
+            
+            const toast = new bootstrap.Toast(toastElement);
+            toast.show();
+        }
+
+        // Show district stakeholders
+        async function showDistrictStakeholders(districtId) {
+            try {
+                const response = await fetch(`/api/districts/${districtId}/stakeholders`);
+                const data = await response.json();
+                
+                let html = `
+                    <h6>Stakeholder in ${districtId}</h6>
+                    <p class="text-muted">Gesamt: ${data.stakeholder_count} Akteure</p>
+                    
+                    <div class="row mb-3">
+                        <div class="col-4 text-center">
+                            <div class="badge bg-danger fs-6">${data.influence_distribution.high}</div>
+                            <div class="small">Hoher Einfluss</div>
+                        </div>
+                        <div class="col-4 text-center">
+                            <div class="badge bg-warning fs-6">${data.influence_distribution.medium}</div>
+                            <div class="small">Mittlerer Einfluss</div>
+                        </div>
+                        <div class="col-4 text-center">
+                            <div class="badge bg-success fs-6">${data.influence_distribution.low}</div>
+                            <div class="small">Niedriger Einfluss</div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                `;
+                
+                data.stakeholders.forEach(stakeholder => {
+                    const influenceColor = stakeholder.influence_level === 'high' ? 'danger' : 
+                                         stakeholder.influence_level === 'medium' ? 'warning' : 'success';
+                    const participationColor = stakeholder.participation_willingness === 'high' ? 'success' : 
+                                             stakeholder.participation_willingness === 'medium' ? 'warning' : 'secondary';
+                    
+                    html += `
+                        <div class="col-12 mb-2">
+                            <div class="card stakeholder-card">
+                                <div class="card-body p-2">
+                                    <h6 class="card-title mb-1">${stakeholder.name}</h6>
+                                    <p class="card-text small text-muted">${stakeholder.type}</p>
+                                    <div class="d-flex gap-1">
+                                        <span class="badge bg-${influenceColor}">${stakeholder.influence_level}</span>
+                                        <span class="badge bg-${participationColor}">${stakeholder.participation_willingness}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                
+                document.getElementById('stakeholderContent').innerHTML = html;
+                new bootstrap.Modal(document.getElementById('stakeholderModal')).show();
+            } catch (error) {
+                console.error('Error loading district stakeholders:', error);
+                showToast('Fehler beim Laden der Stakeholder', 'error');
+            }
+        }
+
+        // Show detailed analysis
+        async function showDetailedAnalysis(districtId) {
+            try {
+                const response = await fetch(`/api/districts/${districtId}/detailed`);
+                const district = await response.json();
+                
+                const energyDemand = district.energy_demand || {};
+                const renewables = district.renewable_potential || {};
+                const additional = district.additional_data || {};
+                
+                const html = `
+                    <h6>Detailanalyse: ${district.name}</h6>
+                    
+                    <!-- Energy Balance Chart -->
+                    <div class="mb-4">
+                        <canvas id="districtEnergyChart" width="400" height="200"></canvas>
+                    </div>
+                    
+                    <!-- Detailed Energy Data -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Energieverbrauch</h6>
+                            <ul class="list-unstyled">
+                                <li><strong>Strom Gesamt:</strong> ${(energyDemand.electricity?.total_annual_mwh || 0).toLocaleString()} MWh</li>
+                                <li>- Haushalte: ${(energyDemand.electricity?.residential_mwh || 0).toLocaleString()} MWh</li>
+                                <li>- Gewerbe: ${(energyDemand.electricity?.commercial_mwh || 0).toLocaleString()} MWh</li>
+                                <li>- Industrie: ${(energyDemand.electricity?.industrial_mwh || 0).toLocaleString()} MWh</li>
+                                <li><strong>Wärme Gesamt:</strong> ${(energyDemand.heat?.total_annual_mwh || 0).toLocaleString()} MWh</li>
+                                <li>- Raumheizung: ${(energyDemand.heat?.space_heating_mwh || 0).toLocaleString()} MWh</li>
+                                <li>- Warmwasser: ${(energyDemand.heat?.hot_water_mwh || 0).toLocaleString()} MWh</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Erzeugungspotenzial</h6>
+                            <ul class="list-unstyled">
+                                <li><strong>Solar PV:</strong> ${(renewables.solar_pv?.rooftop_potential_mwh || 0).toLocaleString()} MWh</li>
+                                <li>- Payback: ${renewables.solar_pv?.payback_years || 'n/a'} Jahre</li>
+                                <li>- CO2-Einsparung: ${(renewables.solar_pv?.co2_savings_tons_per_year || 0).toLocaleString()} t/Jahr</li>
+                                <li><strong>Solarthermie:</strong> ${(renewables.solar_thermal?.potential_mwh || 0).toLocaleString()} MWh</li>
+                                <li><strong>Kleinwind:</strong> ${(renewables.wind?.small_wind_potential_mwh || 0).toLocaleString()} MWh</li>
+                                <li><strong>Biomasse:</strong> ${(renewables.biomass?.potential_mwh || 0).toLocaleString()} MWh</li>
+                                <li><strong>Geothermie:</strong> ${(renewables.geothermal?.shallow_potential_mwh || 0).toLocaleString()} MWh</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Economic Indicators -->
+                    ${additional.economic_indicators ? `
+                    <div class="mt-3">
+                        <h6>Wirtschaftliche Indikatoren</h6>
+                        <div class="row">
+                            <div class="col-6">BIP/Kopf: ${additional.economic_indicators.gdp_per_capita?.toLocaleString() || 'n/a'} €</div>
+                            <div class="col-6">Arbeitslosigkeit: ${((additional.economic_indicators.unemployment_rate || 0) * 100).toFixed(1)}%</div>
+                            <div class="col-6">Innovationsindex: ${((additional.economic_indicators.innovation_index || 0) * 100).toFixed(0)}%</div>
+                            <div class="col-6">Unternehmensdichte: ${(additional.economic_indicators.business_density || 0).toFixed(2)}</div>
+                        </div>
+                    </div>
+                    ` : ''}
+                `;
+                
+                document.getElementById('analysisContent').innerHTML = html;
+                
+                // Create energy balance chart
+                createDistrictEnergyChart(district);
+                
+                new bootstrap.Modal(document.getElementById('analysisModal')).show();
+            } catch (error) {
+                console.error('Error loading detailed analysis:', error);
+                showToast('Fehler beim Laden der Detailanalyse', 'error');
+            }
+        }
+
+        // Create district energy chart
+        function createDistrictEnergyChart(district) {
+            const ctx = document.getElementById('districtEnergyChart').getContext('2d');
+            
+            const energyDemand = district.energy_demand || {};
+            const renewables = district.renewable_potential || {};
+            
+            const consumption = (energyDemand.electricity?.total_annual_mwh || 0) + (energyDemand.heat?.total_annual_mwh || 0);
+            const production = (renewables.total_potential_mwh || 0);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Verbrauch', 'EE-Potenzial'],
+                    datasets: [{
+                        label: 'MWh/Jahr',
+                        data: [consumption, production],
+                        backgroundColor: ['rgba(220, 53, 69, 0.5)', 'rgba(40, 167, 69, 0.5)'],
+                        borderColor: ['rgba(220, 53, 69, 1)', 'rgba(40, 167, 69, 1)'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Energie (MWh/Jahr)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `Energiebilanz ${district.name}`
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Initialize map and load data
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Initialize map
+            initializeMap();
+            
+            // Load districts data
+            await loadDistricts();
+            
+            // Load total overview
+            await loadTotalOverview();
+        });
+        
+        // Create energy flow content in modal
+        function createEnergyFlowContent(data) {
+            const container = document.getElementById('energyFlowContent');
+            
+            const totalDemand = data.energy_demand?.total_annual_mwh || 0;
+            const totalGeneration = data.current_generation?.total_generation_mwh || 0;
+            const totalPotential = data.renewable_potential?.total_potential_mwh || 0;
+            const renewableShare = totalDemand > 0 ? Math.round((totalGeneration / totalDemand) * 100) : 0;
+            
+            container.innerHTML = `
+                <!-- Quartier Header -->
+                <div class="row mb-4">
+                    <div class="col-md-8">
+                        <h4>${data.name}</h4>
+                        <p class="text-muted">
+                            ${data.district_type.toUpperCase()} • ${data.population?.toLocaleString()} Einwohner • ${data.area_km2} km²
+                        </p>
+                        <p class="small">${data.additional_data?.description || 'Keine Beschreibung verfügbar'}</p>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body text-center">
+                                <h6>Energiebilanz</h6>
+                                <h3>${(totalGeneration - totalDemand > 0 ? '+' : '')}${(totalGeneration - totalDemand).toLocaleString()} MWh</h3>
+                                <small>${totalGeneration >= totalDemand ? 'Energieüberschuss' : 'Energiedefizit'}</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Energy Metrics -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h6 class="card-title text-danger">Stromverbrauch</h6>
+                                <h4>${(data.energy_demand?.electricity_mwh || 0).toLocaleString()} MWh</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h6 class="card-title text-warning">Wärmeverbrauch</h6>
+                                <h4>${(data.energy_demand?.heating_mwh || 0).toLocaleString()} MWh</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h6 class="card-title text-success">EE-Erzeugung</h6>
+                                <h4>${totalGeneration.toLocaleString()} MWh</h4>
+                                <small class="text-muted">${renewableShare}% des Bedarfs</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h6 class="card-title text-info">EE-Potential</h6>
+                                <h4>${totalPotential.toLocaleString()} MWh</h4>
+                                <small class="text-muted">${totalPotential > 0 ? Math.round((totalGeneration / totalPotential) * 100) : 0}% genutzt</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Primary Energy Mix -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6><i class="bi bi-fire text-warning"></i> Wärme-Primärenergie</h6>
+                            </div>
+                            <div class="card-body">
+                                ${createPrimaryEnergyTable(data.primary_energy?.heating || {}, 'heating')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6><i class="bi bi-lightning text-primary"></i> Strom-Primärenergie</h6>
+                            </div>
+                            <div class="card-body">
+                                ${createPrimaryEnergyTable(data.primary_energy?.electricity || {}, 'electricity')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Renewable Energy Details -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6><i class="bi bi-sun text-success"></i> Erneuerbare Energien - Potential vs. Nutzung</h6>
+                            </div>
+                            <div class="card-body">
+                                ${createRenewableTable(data.renewable_potential || {}, data.current_generation || {})}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Create primary energy table
+        function createPrimaryEnergyTable(primaryData, type) {
+            const total = primaryData.total_mwh || 0;
+            if (total === 0) return '<p class="text-muted">Keine Daten verfügbar</p>';
+            
+            let html = '<div class="table-responsive"><table class="table table-sm">';
+            
+            Object.entries(primaryData).forEach(([key, value]) => {
+                if (key !== 'total_mwh' && value > 0) {
+                    const name = key.replace('_mwh', '').replace('_', ' ');
+                    const percentage = Math.round((value / total) * 100);
+                    const displayName = getEnergySourceDisplayName(name);
+                    const color = getEnergySourceColor(name);
+                    
+                    html += `
+                        <tr>
+                            <td>
+                                <span class="badge" style="background-color: ${color};">&nbsp;</span>
+                                ${displayName}
+                            </td>
+                            <td class="text-end">${value.toLocaleString()} MWh</td>
+                            <td class="text-end">${percentage}%</td>
+                            <td style="width: 100px;">
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar" style="width: ${percentage}%; background-color: ${color};" role="progressbar"></div>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
+            });
+            
+            html += '</table></div>';
+            return html;
+        }
+        
+        // Create renewable energy comparison table
+        function createRenewableTable(potential, current) {
+            const renewableTypes = [
+                { key: 'solar_pv', name: 'Solar PV', color: '#ffc107' },
+                { key: 'solar_thermal', name: 'Solar Thermal', color: '#fd7e14' },
+                { key: 'small_wind', name: 'Kleinwind', color: '#20c997' },
+                { key: 'biomass', name: 'Biomasse', color: '#198754' },
+                { key: 'geothermal', name: 'Geothermie', color: '#6f42c1' }
+            ];
+            
+            let html = '<div class="table-responsive"><table class="table table-sm">';
+            html += `
+                <thead>
+                    <tr>
+                        <th>Technologie</th>
+                        <th class="text-end">Potential</th>
+                        <th class="text-end">Genutzt</th>
+                        <th class="text-end">Auslastung</th>
+                        <th style="width: 150px;">Fortschritt</th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+            
+            renewableTypes.forEach(type => {
+                const potentialValue = potential[`${type.key}_mwh`] || 0;
+                const currentValue = current[`${type.key}_mwh`] || 0;
+                const utilization = potentialValue > 0 ? Math.round((currentValue / potentialValue) * 100) : 0;
+                
+                if (potentialValue > 0 || currentValue > 0) {
+                    html += `
+                        <tr>
+                            <td>
+                                <span class="badge" style="background-color: ${type.color};">&nbsp;</span>
+                                ${type.name}
+                            </td>
+                            <td class="text-end">${potentialValue.toFixed(1)} MWh</td>
+                            <td class="text-end">${currentValue.toFixed(1)} MWh</td>
+                            <td class="text-end">${utilization}%</td>
+                            <td>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar" style="width: ${Math.min(utilization, 100)}%; background-color: ${type.color};" role="progressbar">
+                                        ${utilization > 10 ? utilization + '%' : ''}
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
+            });
+            
+            html += '</tbody></table></div>';
+            return html;
+        }
+        
+        // Helper functions for energy source display
+        function getEnergySourceDisplayName(name) {
+            const mapping = {
+                'gas': 'Erdgas',
+                'oil': 'Heizöl',
+                'heat pump': 'Wärmepumpe',
+                'biomass': 'Biomasse',
+                'district heating': 'Fernwärme',
+                'direct electric': 'Direktstrom',
+                'grid': 'Stromnetz',
+                'solar pv': 'Solar PV',
+                'other renewables': 'Sonstige EE'
+            };
+            return mapping[name] || name.charAt(0).toUpperCase() + name.slice(1);
+        }
+        
+        function getEnergySourceColor(name) {
+            const mapping = {
+                'gas': '#dc3545',
+                'oil': '#6f42c1',
+                'heat pump': '#20c997',
+                'biomass': '#198754',
+                'district heating': '#fd7e14',
+                'direct electric': '#0d6efd',
+                'grid': '#6c757d',
+                'solar pv': '#ffc107',
+                'other renewables': '#20c997'
+            };
+            return mapping[name] || '#6c757d';
+        }
+    </script>
+</body>
+</html>
