@@ -48,6 +48,46 @@ async def get_districts():
     """Get all grid districts with their data"""
     return await db.get_districts()
 
+@app.get("/api/districts/{district_id}/energy-flows")
+async def get_district_energy_flows(district_id: str):
+    """Get detailed energy flow data for a specific district"""
+    districts = await db.get_districts()
+    district = next((d for d in districts if d['id'] == district_id), None)
+    if not district:
+        raise HTTPException(status_code=404, detail="District not found")
+    
+    # Parse JSON fields for detailed view
+    if isinstance(district.get('energy_demand'), str):
+        district['energy_demand'] = json.loads(district['energy_demand'])
+    if isinstance(district.get('renewable_potential'), str):
+        district['renewable_potential'] = json.loads(district['renewable_potential'])
+    if isinstance(district.get('additional_data'), str):
+        district['additional_data'] = json.loads(district['additional_data'])
+    
+    # Generate extended data using data manager
+    quartier_data = data_manager.generate_quartier_data()
+    target_quartier = next((q for q in quartier_data if q.id == district_id), None)
+    
+    if target_quartier:
+        return {
+            "district_id": district_id,
+            "name": target_quartier.name,
+            "district_type": target_quartier.district_type,
+            "population": target_quartier.population,
+            "area_km2": target_quartier.area_km2,
+            "energy_demand": target_quartier.energy_demand,
+            "primary_energy": target_quartier.primary_energy,
+            "renewable_potential": target_quartier.renewable_potential,
+            "current_generation": target_quartier.current_generation,
+            "energy_flows": target_quartier.energy_flows,
+            "building_types": target_quartier.building_types,
+            "demographics": target_quartier.demographics,
+            "additional_data": target_quartier.additional_data
+        }
+    else:
+        # Fallback to basic district data
+        return district
+
 @app.get("/api/districts/{district_id}/detailed")
 async def get_district_detailed(district_id: str):
     """Get detailed district information including all extended data"""
@@ -213,6 +253,83 @@ async def get_co2_analysis():
         "district_emissions": district_emissions
     }
 
+@app.get("/api/districts/{district_id}/energy-flow")
+async def get_district_energy_flow(district_id: str):
+    """Get detailed energy flow data for a specific district"""
+    districts = await db.get_districts()
+    district = next((d for d in districts if d['id'] == district_id), None)
+    if not district:
+        raise HTTPException(status_code=404, detail="District not found")
+    
+    # Parse JSON fields for detailed view
+    energy_demand = district.get('energy_demand', {})
+    if isinstance(energy_demand, str):
+        energy_demand = json.loads(energy_demand)
+    
+    primary_energy_mix = district.get('primary_energy_mix', {})
+    if isinstance(primary_energy_mix, str):
+        primary_energy_mix = json.loads(primary_energy_mix)
+    
+    renewable_potential = district.get('renewable_potential', {})
+    if isinstance(renewable_potential, str):
+        renewable_potential = json.loads(renewable_potential)
+    
+    current_generation = district.get('current_generation', {})
+    if isinstance(current_generation, str):
+        current_generation = json.loads(current_generation)
+    
+    utilized_potential = district.get('utilized_potential', {})
+    if isinstance(utilized_potential, str):
+        utilized_potential = json.loads(utilized_potential)
+    
+    # Calculate energy flows
+    heating_demand = energy_demand.get('heating_mwh', 0)
+    heating_mix = primary_energy_mix.get('heating', {})
+    
+    electricity_demand = energy_demand.get('electricity_mwh', 0)
+    electricity_mix = primary_energy_mix.get('electricity', {})
+    
+    transport_demand = energy_demand.get('transport_mwh', 0)
+    transport_mix = primary_energy_mix.get('transport', {})
+    
+    # Calculate primary energy consumption by carrier
+    primary_energy_flows = {
+        'heating': {
+            'gas_mwh': round(heating_demand * heating_mix.get('gas_pct', 0) / 100, 1),
+            'oil_mwh': round(heating_demand * heating_mix.get('oil_pct', 0) / 100, 1),
+            'heat_pump_mwh': round(heating_demand * heating_mix.get('heat_pump_pct', 0) / 100, 1),
+            'biomass_mwh': round(heating_demand * heating_mix.get('biomass_pct', 0) / 100, 1),
+            'district_heating_mwh': round(heating_demand * heating_mix.get('district_heating_pct', 0) / 100, 1),
+            'direct_electric_mwh': round(heating_demand * heating_mix.get('direct_electric_pct', 0) / 100, 1)
+        },
+        'electricity': {
+            'grid_import_mwh': round(electricity_demand * electricity_mix.get('grid_import_pct', 0) / 100, 1),
+            'local_pv_mwh': round(electricity_demand * electricity_mix.get('local_pv_pct', 0) / 100, 1),
+            'local_wind_mwh': round(electricity_demand * electricity_mix.get('local_wind_pct', 0) / 100, 1),
+            'local_chp_mwh': round(electricity_demand * electricity_mix.get('local_chp_pct', 0) / 100, 1)
+        },
+        'transport': {
+            'gasoline_mwh': round(transport_demand * transport_mix.get('gasoline_pct', 0) / 100, 1),
+            'diesel_mwh': round(transport_demand * transport_mix.get('diesel_pct', 0) / 100, 1),
+            'electric_mwh': round(transport_demand * transport_mix.get('electric_pct', 0) / 100, 1),
+            'public_transport_mwh': round(transport_demand * transport_mix.get('public_transport_pct', 0) / 100, 1),
+            'cycling_walking_mwh': round(transport_demand * transport_mix.get('cycling_walking_pct', 0) / 100, 1)
+        }
+    }
+    
+    return {
+        'district_id': district_id,
+        'district_name': district['name'],
+        'energy_demand': energy_demand,
+        'primary_energy_mix': primary_energy_mix,
+        'primary_energy_flows': primary_energy_flows,
+        'renewable_potential': renewable_potential,
+        'current_generation': current_generation,
+        'utilized_potential': utilized_potential,
+        'total_renewable_generation': sum(current_generation.values()) if current_generation else 0,
+        'renewable_share_pct': round(sum(current_generation.values()) / energy_demand.get('total_annual_mwh', 1) * 100, 1) if current_generation and energy_demand.get('total_annual_mwh', 0) > 0 else 0
+    }
+
 @app.get("/api/system-config")
 async def get_system_config():
     """Get system configuration parameters"""
@@ -226,7 +343,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "app:app",
         host="127.0.0.1",
-        port=8001,
+        port=8000,
         reload=True,
         log_level="info"
     )

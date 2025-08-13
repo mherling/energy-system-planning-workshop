@@ -22,6 +22,34 @@ schema:
     peak_demand_mw: "number"
     load_profile_type: "string"
   
+  primary_energy_mix:
+    heating:
+      gas_pct: "number"
+      oil_pct: "number" 
+      heat_pump_pct: "number"
+      biomass_pct: "number"
+      district_heating_pct: "number"
+      direct_electric_pct: "number"
+    electricity:
+      grid_import_pct: "number"
+      local_pv_pct: "number"
+      local_wind_pct: "number"
+      local_chp_pct: "number"
+    transport:
+      gasoline_pct: "number"
+      diesel_pct: "number"
+      electric_pct: "number"
+      public_transport_pct: "number"
+      cycling_walking_pct: "number"
+  
+  current_generation:
+    solar_pv_mwh: "number"
+    solar_thermal_mwh: "number"
+    small_wind_mwh: "number"
+    biomass_mwh: "number"
+    chp_mwh: "number"
+    geothermal_mwh: "number"
+    
   renewable_potential:
     solar_pv_mwh: "number"
     solar_thermal_mwh: "number"
@@ -29,6 +57,13 @@ schema:
     biomass_mwh: "number"
     geothermal_mwh: "number"
     total_potential_mwh: "number"
+    
+  utilized_potential:
+    solar_pv_utilization_pct: "number"
+    solar_thermal_utilization_pct: "number"
+    small_wind_utilization_pct: "number"
+    biomass_utilization_pct: "number"
+    geothermal_utilization_pct: "number"
   
   building_types:
     residential: "number"
@@ -61,10 +96,35 @@ district_type_defaults:
       heating_factor: 2.8
       cooling_factor: 0.4
       transport_factor: 1.2
+    primary_energy_mix:
+      heating:
+        gas_pct: 60
+        oil_pct: 10
+        heat_pump_pct: 15
+        biomass_pct: 5
+        district_heating_pct: 8
+        direct_electric_pct: 2
+      electricity:
+        grid_import_pct: 85
+        local_pv_pct: 12
+        local_wind_pct: 2
+        local_chp_pct: 1
+      transport:
+        gasoline_pct: 45
+        diesel_pct: 35
+        electric_pct: 8
+        public_transport_pct: 7
+        cycling_walking_pct: 5
     renewable_potential:
       solar_pv_factor: 0.8  # MWh pro Einwohner
       solar_thermal_factor: 0.6
       small_wind_factor: 0.2
+    utilized_potential:
+      solar_pv_utilization_pct: 15
+      solar_thermal_utilization_pct: 20
+      small_wind_utilization_pct: 5
+      biomass_utilization_pct: 30
+      geothermal_utilization_pct: 0
     buildings:
       residential_pct: 85
       commercial_pct: 10
@@ -82,10 +142,35 @@ district_type_defaults:
       heating_factor: 3.8
       cooling_factor: 1.2
       transport_factor: 2.0
+    primary_energy_mix:
+      heating:
+        gas_pct: 70
+        oil_pct: 5
+        heat_pump_pct: 20
+        biomass_pct: 0
+        district_heating_pct: 5
+        direct_electric_pct: 0
+      electricity:
+        grid_import_pct: 75
+        local_pv_pct: 20
+        local_wind_pct: 3
+        local_chp_pct: 2
+      transport:
+        gasoline_pct: 40
+        diesel_pct: 50
+        electric_pct: 6
+        public_transport_pct: 3
+        cycling_walking_pct: 1
     renewable_potential:
       solar_pv_factor: 1.5
       solar_thermal_factor: 0.4
       small_wind_factor: 0.3
+    utilized_potential:
+      solar_pv_utilization_pct: 25
+      solar_thermal_utilization_pct: 10
+      small_wind_utilization_pct: 8
+      biomass_utilization_pct: 0
+      geothermal_utilization_pct: 5
     buildings:
       residential_pct: 30
       commercial_pct: 60
@@ -103,10 +188,35 @@ district_type_defaults:
       heating_factor: 8.5
       cooling_factor: 2.0
       transport_factor: 3.5
+    primary_energy_mix:
+      heating:
+        gas_pct: 75
+        oil_pct: 0
+        heat_pump_pct: 5
+        biomass_pct: 10
+        district_heating_pct: 10
+        direct_electric_pct: 0
+      electricity:
+        grid_import_pct: 60
+        local_pv_pct: 30
+        local_wind_pct: 5
+        local_chp_pct: 5
+      transport:
+        gasoline_pct: 20
+        diesel_pct: 70
+        electric_pct: 5
+        public_transport_pct: 3
+        cycling_walking_pct: 2
     renewable_potential:
       solar_pv_factor: 2.2
       solar_thermal_factor: 0.3
       small_wind_factor: 1.2
+    utilized_potential:
+      solar_pv_utilization_pct: 40
+      solar_thermal_utilization_pct: 5
+      small_wind_utilization_pct: 15
+      biomass_utilization_pct: 60
+      geothermal_utilization_pct: 10
     buildings:
       residential_pct: 20
       commercial_pct: 25
@@ -125,10 +235,35 @@ district_type_defaults:
       heating_factor: 3.5
       cooling_factor: 0.8
       transport_factor: 1.8
+    primary_energy_mix:
+      heating:
+        gas_pct: 65
+        oil_pct: 8
+        heat_pump_pct: 18
+        biomass_pct: 3
+        district_heating_pct: 6
+        direct_electric_pct: 0
+      electricity:
+        grid_import_pct: 80
+        local_pv_pct: 15
+        local_wind_pct: 3
+        local_chp_pct: 2
+      transport:
+        gasoline_pct: 42
+        diesel_pct: 40
+        electric_pct: 7
+        public_transport_pct: 8
+        cycling_walking_pct: 3
     renewable_potential:
       solar_pv_factor: 1.1
       solar_thermal_factor: 0.5
       small_wind_factor: 0.4
+    utilized_potential:
+      solar_pv_utilization_pct: 20
+      solar_thermal_utilization_pct: 15
+      small_wind_utilization_pct: 7
+      biomass_utilization_pct: 20
+      geothermal_utilization_pct: 2
     buildings:
       residential_pct: 55
       commercial_pct: 30
@@ -155,6 +290,25 @@ quartiers:
       cooling_mwh: 2000
       transport_mwh: 4500
       total_annual_mwh: 26500
+    primary_energy_mix:
+      heating:
+        gas_pct: 70  # Höher wegen älterer Gebäude
+        oil_pct: 12
+        heat_pump_pct: 10
+        biomass_pct: 2
+        district_heating_pct: 6
+        direct_electric_pct: 0
+      electricity:
+        grid_import_pct: 82
+        local_pv_pct: 10  # Denkmalschutz begrenzt PV
+        local_wind_pct: 5
+        local_chp_pct: 3
+      transport:
+        gasoline_pct: 40
+        diesel_pct: 35
+        electric_pct: 10  # Höher wegen E-Ladesäulen
+        public_transport_pct: 12
+        cycling_walking_pct: 3
     renewable_potential:
       solar_pv_mwh: 2750
       solar_thermal_mwh: 1250
@@ -162,6 +316,19 @@ quartiers:
       biomass_mwh: 0
       geothermal_mwh: 500
       total_potential_mwh: 5500
+    current_generation:
+      solar_pv_mwh: 275  # 10% des Potentials genutzt
+      solar_thermal_mwh: 250  # 20% des Potentials
+      small_wind_mwh: 50   # 5% des Potentials
+      biomass_mwh: 0
+      chp_mwh: 360  # BHKW im Zentrum
+      geothermal_mwh: 0
+    utilized_potential:
+      solar_pv_utilization_pct: 10
+      solar_thermal_utilization_pct: 20
+      small_wind_utilization_pct: 5
+      biomass_utilization_pct: 0
+      geothermal_utilization_pct: 0
     special_factors:
       heritage_protection: true
       tourist_area: true
@@ -179,6 +346,25 @@ quartiers:
       cooling_mwh: 720   # 1800 * 0.4
       transport_mwh: 2160  # 1800 * 1.2
       total_annual_mwh: 13680
+    primary_energy_mix:
+      heating:
+        gas_pct: 55  # Niedriger wegen Sanierungen
+        oil_pct: 8
+        heat_pump_pct: 25  # Höher wegen Neubau
+        biomass_pct: 7
+        district_heating_pct: 5
+        direct_electric_pct: 0
+      electricity:
+        grid_import_pct: 80
+        local_pv_pct: 18  # Bessere Dachflächen
+        local_wind_pct: 1
+        local_chp_pct: 1
+      transport:
+        gasoline_pct: 45
+        diesel_pct: 30
+        electric_pct: 12  # Familienfreundlich = mehr E-Autos
+        public_transport_pct: 8
+        cycling_walking_pct: 5
     renewable_potential:
       solar_pv_mwh: 2160  # Bessere Dachflächen
       solar_thermal_mwh: 1440
@@ -186,6 +372,19 @@ quartiers:
       biomass_mwh: 0
       geothermal_mwh: 200
       total_potential_mwh: 4160
+    current_generation:
+      solar_pv_mwh: 389  # 18% des Potentials genutzt
+      solar_thermal_mwh: 288  # 20% des Potentials
+      small_wind_mwh: 18   # 5% des Potentials
+      biomass_mwh: 0
+      chp_mwh: 57  # Kleine BHKW
+      geothermal_mwh: 0
+    utilized_potential:
+      solar_pv_utilization_pct: 18
+      solar_thermal_utilization_pct: 20
+      small_wind_utilization_pct: 5
+      biomass_utilization_pct: 0
+      geothermal_utilization_pct: 0
     special_factors:
       family_friendly: true
     

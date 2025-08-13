@@ -1,6 +1,6 @@
 """
-Datenmanagement für Quartier-Konfiguration
-Lädt und verwaltet Quartier-Daten aus YAML-Konfiguration
+Erweiterter Datenmanager für Quartier-Energieplanung
+Verwaltet Endenergie, Primärenergie, EE-Potentiale und Energieflüsse
 """
 
 import yaml
@@ -22,7 +22,11 @@ class QuartierData:
     population: int
     geometry: Dict[str, Any]
     energy_demand: Dict[str, Any] = field(default_factory=dict)
+    primary_energy: Dict[str, Any] = field(default_factory=dict)
     renewable_potential: Dict[str, Any] = field(default_factory=dict)
+    current_generation: Dict[str, Any] = field(default_factory=dict)
+    utilized_potential: Dict[str, Any] = field(default_factory=dict)
+    energy_flows: Dict[str, Any] = field(default_factory=dict)
     building_types: Dict[str, Any] = field(default_factory=dict)
     demographics: Dict[str, Any] = field(default_factory=dict)
     infrastructure: Dict[str, Any] = field(default_factory=dict)
@@ -54,13 +58,16 @@ class TechnologyData:
     constraints: List[str] = field(default_factory=list)
 
 class QuartierDataManager:
-    """Verwaltet Quartier-Konfiguration und generiert Daten"""
+    """Erweiterter Datenmanager für komplexe Energiefluss-Analyse"""
     
-    def __init__(self, config_file: str = "quartier_config.yml"):
+    def __init__(self, config_file: str = "quartier_config.yml", system_config_file: str = "system_config.yml"):
         self.config_file = Path(__file__).parent / "data" / config_file
+        self.system_config_file = Path(__file__).parent / "data" / system_config_file
         self.config = None
+        self.system_config = None
         self.geojson_data = None
         self.load_config()
+        self.load_system_config()
         self.load_geojson()
     
     def load_config(self):
@@ -68,13 +75,26 @@ class QuartierDataManager:
         try:
             with open(self.config_file, 'r', encoding='utf-8') as f:
                 self.config = yaml.safe_load(f)
-            logger.info(f"Konfiguration geladen aus {self.config_file}")
+            logger.info(f"Quartier-Konfiguration geladen aus {self.config_file}")
         except FileNotFoundError:
-            logger.error(f"Konfigurationsdatei nicht gefunden: {self.config_file}")
+            logger.error(f"Quartier-Konfigurationsdatei nicht gefunden: {self.config_file}")
             raise
         except yaml.YAMLError as e:
-            logger.error(f"Fehler beim Laden der YAML-Konfiguration: {e}")
+            logger.error(f"Fehler beim Laden der Quartier-YAML-Konfiguration: {e}")
             raise
+    
+    def load_system_config(self):
+        """Lädt die System-Konfiguration"""
+        try:
+            with open(self.system_config_file, 'r', encoding='utf-8') as f:
+                self.system_config = yaml.safe_load(f)
+            logger.info(f"System-Konfiguration geladen aus {self.system_config_file}")
+        except FileNotFoundError:
+            logger.warning(f"System-Konfigurationsdatei nicht gefunden: {self.system_config_file}")
+            self.system_config = {}
+        except yaml.YAMLError as e:
+            logger.error(f"Fehler beim Laden der System-YAML-Konfiguration: {e}")
+            self.system_config = {}
     
     def load_geojson(self):
         """Lädt die GeoJSON-Daten"""
@@ -122,8 +142,50 @@ class QuartierDataManager:
             'peak_demand_mw': round((electricity_mwh + heating_mwh) * 0.0002, 2)
         }
     
+    def calculate_primary_energy(self, quartier_config: Dict, energy_demand: Dict) -> Dict[str, Any]:
+        """Berechnet Primärenergiebedarf basierend auf Energieträger-Mix"""
+        
+        # Prüfe ob absolute Werte definiert sind
+        if 'primary_energy' in quartier_config:
+            return quartier_config['primary_energy']
+        
+        # Fallback auf district_type defaults
+        district_type = quartier_config['district_type']
+        defaults = self.config['district_type_defaults'][district_type].get('primary_energy', {})
+        
+        heating_demand = energy_demand.get('heating_mwh', 0)
+        electricity_demand = energy_demand.get('electricity_mwh', 0)
+        
+        # Wärme-Mix berechnen
+        heating_mix = defaults.get('heating_mix', {
+            'gas_pct': 60, 'oil_pct': 10, 'heat_pump_pct': 5,
+            'biomass_pct': 15, 'district_heating_pct': 10
+        })
+        
+        # Strom-Mix berechnen
+        electricity_mix = defaults.get('electricity_mix', {
+            'grid_pct': 85, 'solar_pv_pct': 10, 'other_renewables_pct': 5
+        })
+        
+        return {
+            'heating': {
+                'gas_mwh': round(heating_demand * heating_mix['gas_pct'] / 100, 1),
+                'oil_mwh': round(heating_demand * heating_mix['oil_pct'] / 100, 1),
+                'heat_pump_mwh': round(heating_demand * heating_mix['heat_pump_pct'] / 100, 1),
+                'biomass_mwh': round(heating_demand * heating_mix['biomass_pct'] / 100, 1),
+                'district_heating_mwh': round(heating_demand * heating_mix['district_heating_pct'] / 100, 1),
+                'total_mwh': heating_demand
+            },
+            'electricity': {
+                'grid_mwh': round(electricity_demand * electricity_mix['grid_pct'] / 100, 1),
+                'solar_pv_mwh': round(electricity_demand * electricity_mix['solar_pv_pct'] / 100, 1),
+                'other_renewables_mwh': round(electricity_demand * electricity_mix['other_renewables_pct'] / 100, 1),
+                'total_mwh': electricity_demand
+            }
+        }
+    
     def calculate_renewable_potential(self, quartier_config: Dict, population: int, area_km2: float) -> Dict[str, Any]:
-        """Berechnet erneuerbares Energiepotential - nutzt absolute Werte wenn vorhanden, sonst Faktoren"""
+        """Berechnet erneuerbares Energiepotential - nutzt absolute Werte wenn vorhanden"""
         
         # Prüfe ob absolute Werte definiert sind
         if 'renewable_potential' in quartier_config:
@@ -157,169 +219,214 @@ class QuartierDataManager:
             'solar_pv_mwh': round(solar_pv_mwh, 1),
             'solar_thermal_mwh': round(solar_thermal_mwh, 1),
             'small_wind_mwh': round(small_wind_mwh, 1),
-            'biomass_mwh': biomass_mwh,
-            'geothermal_mwh': round(area_km2 * 100, 1),  # Grobe Schätzung
+            'biomass_mwh': round(biomass_mwh, 1),
+            'geothermal_mwh': round(area_km2 * 100, 1),  # Grober Schätzwert
             'total_potential_mwh': round(solar_pv_mwh + solar_thermal_mwh + small_wind_mwh + biomass_mwh, 1)
         }
     
-    def calculate_building_types(self, quartier_config: Dict, population: int) -> Dict[str, Any]:
+    def calculate_current_generation(self, quartier_config: Dict, renewable_potential: Dict) -> Dict[str, Any]:
+        """Berechnet derzeitige EE-Erzeugung (genutztes Potential)"""
+        
+        # Prüfe ob absolute Werte definiert sind
+        if 'current_generation' in quartier_config:
+            return quartier_config['current_generation']
+        
+        # Fallback: Annahme, dass nur ein Teil des Potentials genutzt wird
+        district_type = quartier_config['district_type']
+        defaults = self.config['district_type_defaults'][district_type].get('utilization_factors', {
+            'solar_pv': 0.15,  # 15% des Potentials genutzt
+            'solar_thermal': 0.20,
+            'small_wind': 0.05,
+            'biomass': 0.30,
+            'geothermal': 0.01
+        })
+        
+        return {
+            'solar_pv_mwh': round(renewable_potential['solar_pv_mwh'] * defaults['solar_pv'], 1),
+            'solar_thermal_mwh': round(renewable_potential['solar_thermal_mwh'] * defaults['solar_thermal'], 1),
+            'small_wind_mwh': round(renewable_potential['small_wind_mwh'] * defaults['small_wind'], 1),
+            'biomass_mwh': round(renewable_potential['biomass_mwh'] * defaults['biomass'], 1),
+            'geothermal_mwh': round(renewable_potential['geothermal_mwh'] * defaults['geothermal'], 1),
+            'total_generation_mwh': round(
+                renewable_potential['solar_pv_mwh'] * defaults['solar_pv'] +
+                renewable_potential['solar_thermal_mwh'] * defaults['solar_thermal'] +
+                renewable_potential['small_wind_mwh'] * defaults['small_wind'] +
+                renewable_potential['biomass_mwh'] * defaults['biomass'] +
+                renewable_potential['geothermal_mwh'] * defaults['geothermal'], 1
+            )
+        }
+    
+    def calculate_energy_flows(self, energy_demand: Dict, primary_energy: Dict, current_generation: Dict) -> Dict[str, Any]:
+        """Berechnet Energieflüsse für Sankey-Diagramm"""
+        
+        flows = {
+            'sources': [
+                {'name': 'Netz (Strom)', 'value': primary_energy['electricity']['grid_mwh']},
+                {'name': 'Erdgas', 'value': primary_energy['heating']['gas_mwh']},
+                {'name': 'Heizöl', 'value': primary_energy['heating']['oil_mwh']},
+                {'name': 'Biomasse', 'value': primary_energy['heating']['biomass_mwh']},
+                {'name': 'Fernwärme', 'value': primary_energy['heating']['district_heating_mwh']},
+                {'name': 'Solar PV (lokal)', 'value': current_generation['solar_pv_mwh']},
+                {'name': 'Solar Thermal (lokal)', 'value': current_generation['solar_thermal_mwh']},
+                {'name': 'Kleinwind (lokal)', 'value': current_generation['small_wind_mwh']}
+            ],
+            'targets': [
+                {'name': 'Strom', 'value': energy_demand['electricity_mwh']},
+                {'name': 'Wärme', 'value': energy_demand['heating_mwh']},
+                {'name': 'Kühlung', 'value': energy_demand['cooling_mwh']},
+                {'name': 'Transport', 'value': energy_demand['transport_mwh']}
+            ],
+            'links': [
+                # Strom-Flüsse
+                {'source': 'Netz (Strom)', 'target': 'Strom', 'value': primary_energy['electricity']['grid_mwh']},
+                {'source': 'Solar PV (lokal)', 'target': 'Strom', 'value': current_generation['solar_pv_mwh']},
+                {'source': 'Kleinwind (lokal)', 'target': 'Strom', 'value': current_generation['small_wind_mwh']},
+                
+                # Wärme-Flüsse
+                {'source': 'Erdgas', 'target': 'Wärme', 'value': primary_energy['heating']['gas_mwh']},
+                {'source': 'Heizöl', 'target': 'Wärme', 'value': primary_energy['heating']['oil_mwh']},
+                {'source': 'Biomasse', 'target': 'Wärme', 'value': primary_energy['heating']['biomass_mwh']},
+                {'source': 'Fernwärme', 'target': 'Wärme', 'value': primary_energy['heating']['district_heating_mwh']},
+                {'source': 'Solar Thermal (lokal)', 'target': 'Wärme', 'value': current_generation['solar_thermal_mwh']},
+                
+                # Wärmepumpe: Strom -> Wärme
+                {'source': 'Strom', 'target': 'Wärme', 'value': primary_energy['heating']['heat_pump_mwh'] / 3.5}  # COP 3.5
+            ]
+        }
+        
+        return flows
+    
+    def calculate_building_types(self, quartier_config: Dict, area_km2: float) -> Dict[str, Any]:
         """Berechnet Gebäudetypen-Verteilung"""
         district_type = quartier_config['district_type']
         defaults = self.config['district_type_defaults'][district_type]['buildings']
         
-        # Geschätzte Gesamtgebäudezahl
-        total_buildings = int(population / 2.2)  # Durchschnittliche Haushaltsgröße
-        
         return {
-            'residential': int(total_buildings * defaults['residential_pct'] / 100),
-            'commercial': int(total_buildings * defaults['commercial_pct'] / 100),
-            'industrial': int(total_buildings * defaults.get('industrial_pct', 0) / 100),
-            'public': int(total_buildings * defaults['public_pct'] / 100),
-            'mixed_use': int(total_buildings * defaults.get('mixed_use_pct', 0) / 100),
-            'total_buildings': total_buildings
+            'residential_pct': defaults['residential_pct'],
+            'commercial_pct': defaults['commercial_pct'],
+            'industrial_pct': defaults.get('industrial_pct', 0),
+            'public_pct': defaults['public_pct'],
+            'total_area_km2': area_km2
         }
     
     def calculate_demographics(self, quartier_config: Dict, population: int) -> Dict[str, Any]:
-        """Berechnet demographische Daten"""
+        """Berechnet demografische Daten"""
         district_type = quartier_config['district_type']
         defaults = self.config['district_type_defaults'][district_type]['demographics']
         
-        # Spezialfaktoren berücksichtigen
-        special_factors = quartier_config.get('special_factors', {})
-        demographics_override = special_factors.get('demographics', {})
+        # Spezielle demografische Überschreibungen
+        special_demographics = quartier_config.get('demographics', {})
         
         return {
-            'avg_age': demographics_override.get('avg_age', defaults['avg_age']),
-            'households': int(population / 2.2),
-            'avg_income_eur': demographics_override.get('avg_income_eur', defaults['avg_income_eur']),
-            'education_high_pct': demographics_override.get('education_high_pct', defaults['education_high_pct']),
+            'avg_age': special_demographics.get('avg_age', defaults['avg_age']),
+            'households': round(population / 2.1),  # Durchschnittliche Haushaltsgröße
+            'avg_income_eur': special_demographics.get('avg_income_eur', defaults['avg_income_eur']),
+            'education_level_high_pct': special_demographics.get('education_high_pct', defaults['education_high_pct']),
             'unemployment_rate_pct': defaults['unemployment_rate_pct']
         }
     
-    def calculate_infrastructure(self, quartier_config: Dict, population: int) -> Dict[str, Any]:
-        """Berechnet Infrastruktur-Kennzahlen"""
-        return {
-            'schools': max(1, population // 800),
-            'kindergartens': max(1, population // 600),
-            'medical_facilities': max(1, population // 1500),
-            'shopping_centers': max(1, population // 1000),
-            'public_transport_quality': "gut" if population > 1500 else "befriedigend",
-            'green_space_pct': 25 + (quartier_config.get('special_factors', {}).get('rural_character', False) * 15)
-        }
-    
-    def get_quartier_center(self, quartier_id: str) -> List[float]:
-        """Berechnet Zentrum eines Quartiers aus GeoJSON-Daten"""
-        quartier_num = int(quartier_id.split('_')[1])
-        
-        for feature in self.geojson_data['features']:
-            if feature['properties']['id'] == quartier_num:
-                coords = feature['geometry']['coordinates'][0][0]
-                lats = [coord[1] for coord in coords]
-                lons = [coord[0] for coord in coords]
-                return [sum(lats) / len(lats), sum(lons) / len(lons)]
-        
-        return [50.8994, 14.8076]  # Fallback: Zittau Zentrum
-    
     def generate_quartier_data(self) -> List[QuartierData]:
-        """Generiert alle Quartier-Daten basierend auf Konfiguration"""
+        """Generiert alle Quartier-Daten"""
         quartiers = []
         
         for quartier_id, quartier_config in self.config['quartiers'].items():
-            # Population berechnen oder überschreiben
-            if 'population_override' in quartier_config:
-                population = quartier_config['population_override']
-            else:
+            # Basis-Daten
+            area_km2 = quartier_config['area_km2']
+            population = quartier_config.get('population_override')
+            
+            if population is None:
+                # Berechne Population basierend auf Dichte
                 district_type = quartier_config['district_type']
                 density = self.config['district_type_defaults'][district_type]['base_population_density']
-                population = int(quartier_config['area_km2'] * density)
+                population = int(area_km2 * density)
             
-            # GeoJSON-Geometrie finden
-            quartier_num = int(quartier_id.split('_')[1])
+            # Finde entsprechende Geometrie
             geometry = None
-            for feature in self.geojson_data['features']:
-                if feature['properties']['id'] == quartier_num:
-                    geometry = feature['geometry']
-                    break
+            if self.geojson_data:
+                # Mapping zwischen quartier_id und GeoJSON
+                quartier_mapping = {
+                    'quartier_1': {'id': 1, 'name': 'Zentrum'},
+                    'quartier_2': {'id': 2, 'name': 'Süd'},
+                    'quartier_3': {'id': 3, 'name': 'Ost'},
+                    'quartier_4': {'id': 4, 'name': 'Weinau'},
+                    'quartier_5': {'id': 5, 'name': 'Nord'},
+                    'quartier_6': {'id': 6, 'name': 'Vorstadt'},
+                    'quartier_7': {'id': 7, 'name': 'West'},
+                    'quartier_8': {'id': 8, 'name': 'Pethau'}
+                }
+                
+                if quartier_id in quartier_mapping:
+                    expected_id = quartier_mapping[quartier_id]['id']
+                    expected_name = quartier_mapping[quartier_id]['name']
+                    
+                    for feature in self.geojson_data['features']:
+                        feature_id = feature['properties'].get('id')
+                        feature_name = feature['properties'].get('Stadtteil')
+                        
+                        if feature_id == expected_id or feature_name == expected_name:
+                            geometry = feature['geometry']
+                            logger.info(f"Geometrie für {quartier_id} ({expected_name}) gefunden")
+                            break
             
-            if not geometry:
+            if geometry is None:
                 logger.warning(f"Keine Geometrie für {quartier_id} gefunden")
-                continue
+                geometry = {'type': 'Polygon', 'coordinates': [[]]}
             
-            # Daten berechnen
-            quartier_data = QuartierData(
+            # Berechnungen
+            energy_demand = self.calculate_energy_demand(quartier_config, population, area_km2)
+            primary_energy = self.calculate_primary_energy(quartier_config, energy_demand)
+            renewable_potential = self.calculate_renewable_potential(quartier_config, population, area_km2)
+            current_generation = self.calculate_current_generation(quartier_config, renewable_potential)
+            energy_flows = self.calculate_energy_flows(energy_demand, primary_energy, current_generation)
+            building_types = self.calculate_building_types(quartier_config, area_km2)
+            demographics = self.calculate_demographics(quartier_config, population)
+            
+            # Zusätzliche Daten
+            additional_data = {
+                'priority_level': quartier_config.get('priority_level', 'medium'),
+                'description': quartier_config.get('description', ''),
+                'special_factors': quartier_config.get('special_factors', {})
+            }
+            
+            # Erstelle QuartierData-Objekt
+            quartier = QuartierData(
                 id=quartier_id,
                 name=quartier_config['name'],
                 district_type=quartier_config['district_type'],
-                area_km2=quartier_config['area_km2'],
+                area_km2=area_km2,
                 population=population,
                 geometry=geometry,
-                energy_demand=self.calculate_energy_demand(quartier_config, population, quartier_config['area_km2']),
-                renewable_potential=self.calculate_renewable_potential(quartier_config, population, quartier_config['area_km2']),
-                building_types=self.calculate_building_types(quartier_config, population),
-                demographics=self.calculate_demographics(quartier_config, population),
-                infrastructure=self.calculate_infrastructure(quartier_config, population),
-                additional_data={
-                    'description': quartier_config.get('description', ''),
-                    'priority_level': quartier_config.get('priority_level', 'medium'),
-                    'special_factors': quartier_config.get('special_factors', {}),
-                    'center': self.get_quartier_center(quartier_id)
-                }
+                energy_demand=energy_demand,
+                primary_energy=primary_energy,
+                renewable_potential=renewable_potential,
+                current_generation=current_generation,
+                utilized_potential=current_generation,  # Alias
+                energy_flows=energy_flows,
+                building_types=building_types,
+                demographics=demographics,
+                additional_data=additional_data
             )
             
-            quartiers.append(quartier_data)
+            quartiers.append(quartier)
         
         return quartiers
     
     def generate_stakeholder_data(self) -> List[StakeholderData]:
         """Generiert Stakeholder-Daten"""
         stakeholders = []
+        quartier_ids = list(self.config['quartiers'].keys())
         
-        # Beispiel-Stakeholder basierend auf Templates
-        stakeholder_configs = [
-            {
-                'id': 'stadt_zittau',
-                'name': 'Stadt Zittau - Stadtplanung',
-                'category': 'municipality',
-                'contact': {'email': 'stadtplanung@zittau.de', 'phone': '+49 3583 752-200'},
-                'district_id': 'quartier_1'
-            },
-            {
-                'id': 'stadtwerke_zittau',
-                'name': 'Stadtwerke Zittau',
-                'category': 'utility',
-                'contact': {'email': 'info@stadtwerke-zittau.de', 'phone': '+49 3583 540-0'},
-                'district_id': 'quartier_3'
-            },
-            {
-                'id': 'buergerenergie_zittau',
-                'name': 'Bürgerenergie Zittau e.V.',
-                'category': 'citizen_group',
-                'contact': {'email': 'kontakt@buergerenergie-zittau.de'},
-                'district_id': 'quartier_2'
-            },
-            {
-                'id': 'gewerbe_zentrum',
-                'name': 'Gewerbeverein Zittau Zentrum',
-                'category': 'business',
-                'contact': {'email': 'info@gewerbe-zittau.de'},
-                'district_id': 'quartier_1'
-            }
-        ]
-        
-        for config in stakeholder_configs:
-            template = self.config['stakeholder_templates'][config['category']]
-            
+        for i, (template_id, template) in enumerate(self.config['stakeholder_templates'].items()):
             stakeholder = StakeholderData(
-                id=config['id'],
-                name=config['name'],
-                category=config['category'],
-                contact=config['contact'],
+                id=f"stakeholder_{i+1}",
+                name=f"{template_id.replace('_', ' ').title()}",
+                category=template_id,
+                contact={'email': f"kontakt@{template_id}.de", 'phone': '+49 123 456789'},
                 interests=template['typical_interests'],
-                district_id=config['district_id'],
+                district_id=quartier_ids[i % len(quartier_ids)],
                 influence_level=template['default_influence'],
                 participation_willingness=template['default_participation']
             )
-            
             stakeholders.append(stakeholder)
         
         return stakeholders
@@ -340,10 +447,25 @@ class QuartierDataManager:
                 availability=tech_config['availability'],
                 constraints=tech_config.get('constraints', [])
             )
-            
             technologies.append(technology)
         
         return technologies
+    
+    def get_quartier_color(self, quartier_id: str) -> str:
+        """Gibt die Farbe für ein Quartier zurück"""
+        return self.system_config.get('quartier_colors', {}).get(quartier_id, '#3388ff')
+    
+    def get_energy_scenarios(self) -> Dict[str, Any]:
+        """Gibt alle Energiepreis-Szenarien zurück"""
+        return self.system_config.get('energy_scenarios', {})
+    
+    def get_emission_factors(self) -> Dict[str, float]:
+        """Gibt Emissionsfaktoren zurück"""
+        return self.system_config.get('emission_factors', {})
+    
+    def get_regional_parameters(self) -> Dict[str, Any]:
+        """Gibt regionale Parameter zurück"""
+        return self.system_config.get('regional_parameters', {})
     
     def validate_data(self, data_type: str, data: Dict[str, Any]) -> bool:
         """Validiert Daten gegen Schema"""
@@ -381,44 +503,6 @@ class QuartierDataManager:
         
         logger.info(f"Daten exportiert nach {output_path}")
         return output_path
-    
-    def load_system_config(self):
-        """Lädt die System-Konfiguration aus YAML"""
-        system_config_file = Path(__file__).parent / "data" / "system_config.yml"
-        try:
-            with open(system_config_file, 'r', encoding='utf-8') as f:
-                self.system_config = yaml.safe_load(f)
-            logger.info(f"System-Konfiguration geladen aus {system_config_file}")
-        except FileNotFoundError:
-            logger.warning(f"System-Konfigurationsdatei nicht gefunden: {system_config_file}")
-            self.system_config = {}
-        except yaml.YAMLError as e:
-            logger.error(f"Fehler beim Laden der System-YAML-Konfiguration: {e}")
-            self.system_config = {}
-    
-    def get_quartier_color(self, quartier_id: str) -> str:
-        """Gibt die Farbe für ein Quartier zurück"""
-        if not hasattr(self, 'system_config'):
-            self.load_system_config()
-        return self.system_config.get('quartier_colors', {}).get(quartier_id, '#3388ff')
-    
-    def get_energy_scenarios(self) -> Dict[str, Any]:
-        """Gibt alle Energiepreis-Szenarien zurück"""
-        if not hasattr(self, 'system_config'):
-            self.load_system_config()
-        return self.system_config.get('energy_scenarios', {})
-    
-    def get_emission_factors(self) -> Dict[str, float]:
-        """Gibt Emissionsfaktoren zurück"""
-        if not hasattr(self, 'system_config'):
-            self.load_system_config()
-        return self.system_config.get('emission_factors', {})
-    
-    def get_regional_parameters(self) -> Dict[str, Any]:
-        """Gibt regionale Parameter zurück"""
-        if not hasattr(self, 'system_config'):
-            self.load_system_config()
-        return self.system_config.get('regional_parameters', {})
 
 if __name__ == "__main__":
     # Test der Datenmanagement-Klasse
@@ -426,14 +510,27 @@ if __name__ == "__main__":
     
     logging.basicConfig(level=logging.INFO)
     
-    manager = QuartierDataManager()
-    
-    # Generiere alle Daten
-    quartiers = manager.generate_quartier_data()
-    stakeholders = manager.generate_stakeholder_data()
-    technologies = manager.generate_technology_data()
-    
-    print(f"Generiert: {len(quartiers)} Quartiere, {len(stakeholders)} Stakeholder, {len(technologies)} Technologien")
-    
-    # Exportiere Daten
-    manager.export_to_json()
+    try:
+        manager = QuartierDataManager()
+        
+        # Teste Datengeneration
+        quartiers = manager.generate_quartier_data()
+        print(f"✓ {len(quartiers)} Quartiere generiert")
+        
+        for quartier in quartiers[:2]:  # Zeige nur die ersten 2
+            print(f"  - {quartier.name}: {quartier.energy_demand['total_annual_mwh']} MWh/Jahr")
+            print(f"    Primärenergie Wärme: {quartier.primary_energy['heating']['total_mwh']} MWh")
+            print(f"    EE-Potential: {quartier.renewable_potential['total_potential_mwh']} MWh")
+            print(f"    Derzeitige EE-Erzeugung: {quartier.current_generation['total_generation_mwh']} MWh")
+        
+        stakeholders = manager.generate_stakeholder_data()
+        print(f"✓ {len(stakeholders)} Stakeholder generiert")
+        
+        technologies = manager.generate_technology_data()
+        print(f"✓ {len(technologies)} Technologien generiert")
+        
+        print("✓ Datenmanager erfolgreich getestet")
+        
+    except Exception as e:
+        print(f"✗ Fehler beim Testen: {e}")
+        raise
