@@ -1,27 +1,13 @@
 /**
- * Scenario Analysis Module
- * Handles energy scenario data loading, display, and comparison
+ * Scenario View Module
+ * Handles energy scenario UI rendering and modal display
  */
-
-let energyScenarios = {};
-
-// Load energy scenarios
-async function loadEnergyScenarios() {
-    try {
-        Logger.info('Loading energy scenarios...');
-        energyScenarios = await apiClient.getEnergyScenarios();
-        Logger.info('Loaded energy scenarios:', Object.keys(energyScenarios));
-        return energyScenarios;
-    } catch (error) {
-        Logger.error('Error loading energy scenarios:', error);
-        notificationManager.showError('Fehler beim Laden der Energie-Szenarien');
-        return {};
-    }
-}
 
 // Create scenario analysis content
 function createScenarioContent(quartier) {
-    if (!energyScenarios || Object.keys(energyScenarios).length === 0) {
+    const relevantScenarios = getRelevantScenarios(quartier);
+    
+    if (!relevantScenarios || Object.keys(relevantScenarios).length === 0) {
         return `
             <div class="text-center">
                 <p class="text-muted">Keine Szenario-Daten verfügbar.</p>
@@ -33,7 +19,7 @@ function createScenarioContent(quartier) {
         <div class="scenario-container">
             ${quartier !== 'all' ? `<h5>Energie-Szenarien</h5>` : ''}
             <div class="row">
-                ${Object.entries(energyScenarios).map(([scenarioKey, scenarioData]) => `
+                ${Object.entries(relevantScenarios).map(([scenarioKey, scenarioData]) => `
                     <div class="col-md-6 mb-3">
                         <div class="card">
                             <div class="card-header">
@@ -89,8 +75,10 @@ async function showScenarioAnalysis(quartier) {
     console.log('showScenarioAnalysis called with quartier:', quartier);
     try {
         // Ensure data is loaded
-        console.log('Current energyScenarios keys:', Object.keys(energyScenarios));
-        if (Object.keys(energyScenarios).length === 0) {
+        const currentScenarios = getEnergyScenarios();
+        console.log('Current energyScenarios keys:', Object.keys(currentScenarios));
+        
+        if (Object.keys(currentScenarios).length === 0) {
             console.log('Loading energy scenarios...');
             await loadEnergyScenarios();
         }
@@ -120,13 +108,13 @@ async function showScenarioComparison(quartier) {
     console.log('showScenarioComparison called with quartier:', quartier);
     try {
         // Ensure data is loaded
-        console.log('Current energyScenarios keys:', Object.keys(energyScenarios));
-        console.log('Energy scenarios data:', energyScenarios);
-        if (Object.keys(energyScenarios).length === 0) {
+        const currentScenarios = getEnergyScenarios();
+        console.log('Current energyScenarios keys:', Object.keys(currentScenarios));
+        
+        if (Object.keys(currentScenarios).length === 0) {
             console.log('Loading energy scenarios...');
             await loadEnergyScenarios();
-            console.log('Energy scenarios loaded, new keys:', Object.keys(energyScenarios));
-            console.log('Loaded energy scenarios data:', energyScenarios);
+            console.log('Energy scenarios loaded');
         }
 
         console.log('Creating scenario content...');
@@ -150,13 +138,7 @@ async function showScenarioComparison(quartier) {
     }
 }
 
-// Get energy scenarios data (for other modules)
-function getEnergyScenarios() {
-    return energyScenarios;
-}
-
-// Export functions for global access
+// Export to global scope
 window.showScenarioAnalysis = showScenarioAnalysis;
 window.showScenarioComparison = showScenarioComparison;
-window.loadEnergyScenarios = loadEnergyScenarios;
-window.getEnergyScenarios = getEnergyScenarios;
+window.createScenarioContent = createScenarioContent;

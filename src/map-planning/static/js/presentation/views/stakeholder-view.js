@@ -1,33 +1,11 @@
 /**
- * Stakeholder Analysis Module
- * Handles stakeholder data loading, display, and analysis
+ * Stakeholder View Module
+ * Handles stakeholder UI rendering and modal display
  */
-
-let stakeholders = [];
-
-// Load stakeholders data
-async function loadStakeholders() {
-    try {
-        Logger.info('Loading stakeholders...');
-        stakeholders = await apiClient.getStakeholders();
-        Logger.info('Loaded stakeholders:', stakeholders.length);
-        return stakeholders;
-    } catch (error) {
-        Logger.error('Error loading stakeholders:', error);
-        notificationManager.showError('Fehler beim Laden der Stakeholder-Daten');
-        return [];
-    }
-}
 
 // Create stakeholder content for modal
 function createStakeholderContent(quartier) {
-    let relevantStakeholders;
-    
-    if (quartier === 'all') {
-        relevantStakeholders = stakeholders;
-    } else {
-        relevantStakeholders = stakeholders;
-    }
+    const relevantStakeholders = getRelevantStakeholders(quartier);
     
     if (relevantStakeholders.length === 0) {
         return `
@@ -65,13 +43,13 @@ async function showStakeholderAnalysis(quartier) {
     console.log('showStakeholderAnalysis called with quartier:', quartier);
     try {
         // Ensure data is loaded
-        console.log('Current stakeholders length:', stakeholders.length);
-        console.log('Stakeholders data:', stakeholders);
-        if (stakeholders.length === 0) {
+        const currentStakeholders = getStakeholders();
+        console.log('Current stakeholders length:', currentStakeholders.length);
+        
+        if (currentStakeholders.length === 0) {
             console.log('Loading stakeholders...');
             await loadStakeholders();
-            console.log('Stakeholders loaded, new length:', stakeholders.length);
-            console.log('Loaded stakeholders data:', stakeholders);
+            console.log('Stakeholders loaded');
         }
 
         console.log('Creating stakeholder content...');
@@ -94,12 +72,6 @@ async function showStakeholderAnalysis(quartier) {
     }
 }
 
-// Get stakeholders data (for other modules)
-function getStakeholders() {
-    return stakeholders;
-}
-
-// Export functions for global access
+// Export to global scope
 window.showStakeholderAnalysis = showStakeholderAnalysis;
-window.loadStakeholders = loadStakeholders;
-window.getStakeholders = getStakeholders;
+window.createStakeholderContent = createStakeholderContent;
