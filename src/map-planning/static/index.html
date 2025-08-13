@@ -15,12 +15,20 @@
     <style>
         body {
             background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
         }
         
         #map {
-            height: 600px;
+            height: calc(100vh - 120px); /* Viewport height minus navbar and margin */
+            min-height: 400px; /* Minimum height for small screens */
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .main-container {
+            height: calc(100vh - 80px); /* Full height minus navbar */
+            overflow: hidden;
         }
         
         .district-info {
@@ -99,14 +107,14 @@
     </nav>
 
     <!-- Main Container -->
-    <div class="container-fluid mt-3">
-        <div class="row">
+    <div class="container-fluid mt-3 main-container">
+        <div class="row h-100">
             <!-- Map Section -->
-            <div class="col-lg-8">
-                <div class="position-relative">
+            <div class="col-lg-8 h-100">
+                <div class="position-relative h-100">
                     <div id="map"></div>
                     <div class="grid-legend">
-                        <h6 class="mb-2">4x4 Raster Zittau</h6>
+                        <h6 class="mb-2">Quartiere Zittau</h6>
                         <div><span style="color: #28a745;">●</span> Hoher Verbrauch</div>
                         <div><span style="color: #ffc107;">●</span> Mittlerer Verbrauch</div>
                         <div><span style="color: #17a2b8;">●</span> Niedriger Verbrauch</div>
@@ -115,15 +123,15 @@
             </div>
             
             <!-- Information Panel -->
-            <div class="col-lg-4">
+            <div class="col-lg-4 h-100" style="overflow-y: auto;">
                 <!-- District Information -->
                 <div class="district-info">
                     <h5 class="mb-3">
                         <i class="bi bi-geo-alt-fill text-primary"></i>
-                        Raster-Informationen
+                        Quartier-Informationen
                     </h5>
                     <div id="districtDetails">
-                        <p class="text-muted">Wählen Sie ein Raster auf der Karte aus</p>
+                        <p class="text-muted">Wählen Sie ein Quartier auf der Karte aus</p>
                     </div>
                 </div>
                 
@@ -259,6 +267,18 @@
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
+            
+            // Handle window resize to ensure map displays correctly
+            window.addEventListener('resize', function() {
+                setTimeout(function() {
+                    map.invalidateSize();
+                }, 100);
+            });
+            
+            // Ensure map size is correct after initial load
+            setTimeout(function() {
+                map.invalidateSize();
+            }, 500);
         }
 
         // Load all data
@@ -277,54 +297,51 @@
             }
         }
 
-        // Load districts and create grid
+        // Load districts and create quartiers
         async function loadDistricts() {
             try {
                 const response = await fetch('/api/districts');
                 districts = await response.json();
-                createGridOnMap();
-                console.log(`Loaded ${districts.length} districts`);
+                createQuartiersOnMap();
+                console.log(`Loaded ${districts.length} quartiers`);
             } catch (error) {
                 console.error('Error loading districts:', error);
             }
         }
 
-        // Create 4x4 grid on map
-        function createGridOnMap() {
-            const zittauCenter = [50.8994, 14.8076];
-            const gridSize = 0.01; // Degrees
-            
-            districts.forEach((district, index) => {
-                const row = Math.floor(index / 4);
-                const col = index % 4;
-                
-                const bounds = [
-                    [zittauCenter[0] + (row - 2) * gridSize, zittauCenter[1] + (col - 2) * gridSize],
-                    [zittauCenter[0] + (row - 1) * gridSize, zittauCenter[1] + (col - 1) * gridSize]
-                ];
+        // Create quartier polygons on map
+        function createQuartiersOnMap() {
+            districts.forEach((district) => {
+                // Get consumption for color coding
+                const consumption = district.energy_demand?.total_annual_mwh || 0;
                 
                 // Color based on energy consumption
                 let color = '#17a2b8'; // Low consumption
-                const consumption = district.energy_consumption || 0;
-                if (consumption > 1000) color = '#28a745'; // High
-                else if (consumption > 500) color = '#ffc107'; // Medium
+                if (consumption > 4000) color = '#28a745'; // High
+                else if (consumption > 2500) color = '#ffc107'; // Medium
                 
-                const rectangle = L.rectangle(bounds, {
+                // Create polygon from GeoJSON geometry
+                const coordinates = district.geometry.coordinates[0][0]; // Get first polygon ring
+                const latLngs = coordinates.map(coord => [coord[1], coord[0]]); // Convert [lon, lat] to [lat, lon]
+                
+                const polygon = L.polygon(latLngs, {
                     color: color,
                     weight: 2,
                     fillOpacity: 0.3
                 }).addTo(map);
                 
-                rectangle.bindPopup(`
+                polygon.bindPopup(`
                     <strong>${district.name}</strong><br>
                     Typ: ${district.district_type}<br>
-                    Verbrauch: ${consumption} MWh/Jahr<br>
-                    EE-Potenzial: ${district.renewable_potential || 0} MWh/Jahr
+                    Bevölkerung: ${district.population}<br>
+                    Strom: ${district.energy_demand?.electricity_mwh || 0} MWh/Jahr<br>
+                    Wärme: ${district.energy_demand?.heating_mwh || 0} MWh/Jahr<br>
+                    EE-Potenzial: ${district.renewable_potential?.total_potential_mwh || 0} MWh/Jahr
                 `);
                 
-                rectangle.on('click', () => selectDistrict(district));
+                polygon.on('click', () => selectDistrict(district));
                 
-                districtLayers[district.id] = rectangle;
+                districtLayers[district.id] = polygon;
             });
         }
 
