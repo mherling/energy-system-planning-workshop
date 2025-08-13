@@ -22,7 +22,7 @@ async function initializeApp() {
         await loadData();
         
         Logger.info('Application initialized successfully');
-        notificationManager.showSuccess('Anwendung erfolgreich geladen');
+        notificationManager.showSuccess('Anwendung erfolgreich geladen', 3000); // 3 Sekunden statt 5
     } catch (error) {
         Logger.error('Error initializing application:', error);
         notificationManager.showError('Fehler beim Initialisieren der Anwendung');

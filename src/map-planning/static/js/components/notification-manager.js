@@ -60,15 +60,24 @@ class NotificationManager {
         
         const toastElement = document.getElementById(toastId);
         const toast = new bootstrap.Toast(toastElement, {
-            autohide: duration > 0,
-            delay: duration
+            autohide: true,  // Explizit auf true setzen
+            delay: duration  // Delay in Millisekunden
         });
         
         toast.show();
         
+        // Zusätzlicher Fallback: Auto-remove nach der angegebenen Zeit + 500ms Puffer
+        setTimeout(() => {
+            if (toastElement && document.contains(toastElement)) {
+                toast.hide();
+            }
+        }, duration + 500);
+        
         // Remove from DOM after hiding
         toastElement.addEventListener('hidden.bs.toast', () => {
-            toastElement.remove();
+            if (toastElement && document.contains(toastElement)) {
+                toastElement.remove();
+            }
         });
         
         return toast;
@@ -77,7 +86,7 @@ class NotificationManager {
     /**
      * Zeigt eine Erfolgs-Toast an
      */
-    showSuccess(message, duration = 5000) {
+    showSuccess(message, duration = 3000) {  // 3 Sekunden statt 5
         return this.showToast(message, 'success', duration);
     }
     
