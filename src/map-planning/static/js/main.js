@@ -34,6 +34,8 @@ async function loadData() {
         
         const results = await Promise.all([
             loadDistricts(),
+            loadStakeholders(),
+            loadEnergyScenarios(),
             initializeAnalysis(),
             loadEnergyMetrics()
         ]);
