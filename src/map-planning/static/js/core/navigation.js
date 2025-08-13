@@ -140,46 +140,6 @@ function showToast(message, type = 'info') {
     });
 }
 
-// Show stakeholders modal
-async function showStakeholders() {
-    console.log('showStakeholders called!');
-    try {
-        console.log('Checking if showStakeholderAnalysis exists:', typeof showStakeholderAnalysis);
-        if (typeof showStakeholderAnalysis === 'undefined') {
-            alert('showStakeholderAnalysis function not found!');
-            return;
-        }
-        
-        console.log('Calling showStakeholderAnalysis...');
-        await showStakeholderAnalysis('all');
-        console.log('showStakeholderAnalysis completed');
-    } catch (error) {
-        console.error('Error showing stakeholders:', error);
-        alert('Error: ' + error.message);
-        notificationManager.showError('Fehler beim Anzeigen der Stakeholder');
-    }
-}
-
-// Show scenarios modal
-async function showScenarios() {
-    console.log('showScenarios called!');
-    try {
-        console.log('Checking if showScenarioComparison exists:', typeof showScenarioComparison);
-        if (typeof showScenarioComparison === 'undefined') {
-            alert('showScenarioComparison function not found!');
-            return;
-        }
-        
-        console.log('Calling showScenarioComparison...');
-        await showScenarioComparison('all');
-        console.log('showScenarioComparison completed');
-    } catch (error) {
-        console.error('Error showing scenarios:', error);
-        alert('Error: ' + error.message);
-        notificationManager.showError('Fehler beim Anzeigen der Szenarien');
-    }
-}
-
 // Show configuration dashboard
 async function showConfiguration() {
     console.log('showConfiguration called!');
@@ -204,6 +164,4 @@ async function showConfiguration() {
 window.selectDistrictFromOverview = selectDistrictFromOverview;
 window.showOverview = showOverview;
 window.showToast = showToast;
-window.showStakeholders = showStakeholders;
-window.showScenarios = showScenarios;
 window.showConfiguration = showConfiguration;

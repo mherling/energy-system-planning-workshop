@@ -27,12 +27,6 @@
                 <a class="nav-link" href="#" onclick="showOverview()">
                     <i class="bi bi-house-door"></i> Übersicht
                 </a>
-                <a class="nav-link" href="#" onclick="showStakeholders()">
-                    <i class="bi bi-people"></i> Stakeholder
-                </a>
-                <a class="nav-link" href="#" onclick="showScenarios()">
-                    <i class="bi bi-graph-up"></i> Szenarien
-                </a>
                 <a class="nav-link" href="#" onclick="showConfiguration()">
                     <i class="bi bi-gear"></i> Konfiguration
                 </a>
@@ -90,46 +84,6 @@
                             </div>
                             <p class="mt-3">Gesamtdaten werden geladen...</p>
                         </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Stakeholder Modal -->
-    <div class="modal fade" id="stakeholderModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title">
-                        <i class="bi bi-people-fill"></i>
-                        Stakeholder Matrix
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div id="stakeholderContent">
-                        <!-- Content loaded dynamically -->
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Scenario Modal -->
-    <div class="modal fade" id="scenarioModal" tabindex="-1">
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title">
-                        <i class="bi bi-graph-up"></i>
-                        Energiepreis-Szenarien
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row" id="scenarioContent">
-                        <!-- Content loaded dynamically -->
                     </div>
                 </div>
             </div>
@@ -205,15 +159,11 @@
     
     <!-- Data Layer -->
     <script src="/static/js/data/districts-data.js"></script>
-    <script src="/static/js/data/stakeholders-data.js"></script>
-    <script src="/static/js/data/scenarios-data.js"></script>
     <script src="/static/js/data/config-data.js"></script>
     
     <!-- Presentation Layer -->
     <script src="/static/js/presentation/overview-view.js"></script>
     <script src="/static/js/presentation/views/district-view.js"></script>
-    <script src="/static/js/presentation/views/stakeholder-view.js"></script>
-    <script src="/static/js/presentation/views/scenario-view.js"></script>
     <script src="/static/js/presentation/views/config-view.js"></script>
     
     <!-- Template Modules -->

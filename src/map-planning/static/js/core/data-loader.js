@@ -10,8 +10,6 @@ async function loadData() {
         
         const results = await Promise.all([
             loadDistricts(),
-            loadStakeholders(),
-            loadEnergyScenarios(),
             initializeAnalysis(),
             loadEnergyMetrics()
         ]);
@@ -45,3 +43,13 @@ async function loadEnergyMetrics() {
 // Export to global scope
 window.loadData = loadData;
 window.loadEnergyMetrics = loadEnergyMetrics;
+
+// Temporary compatibility shims for removed functions (to prevent cache errors)
+window.loadStakeholders = function() { 
+    console.log('loadStakeholders is deprecated - use Configuration instead');
+    return Promise.resolve([]);
+};
+window.loadEnergyScenarios = function() { 
+    console.log('loadEnergyScenarios is deprecated - use Configuration instead');
+    return Promise.resolve([]);
+};
