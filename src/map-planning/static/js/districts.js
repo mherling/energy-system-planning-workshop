@@ -160,10 +160,10 @@ function displayDistrictDetails(district) {
                         <div class="card-body">
                             ${Object.entries(additionalData.primary_energy_mix).map(([source, percentage]) => `
                                 <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="small">${getEnergySourceDisplayName(source)}</span>
+                                    <span class="small">${window.getEnergySourceDisplayName(source)}</span>
                                     <div class="d-flex align-items-center">
                                         <div class="progress me-2" style="width: 60px; height: 10px;">
-                                            <div class="progress-bar" style="width: ${percentage}%; background-color: ${getEnergySourceColor(source)};"></div>
+                                            <div class="progress-bar" style="width: ${percentage}%; background-color: ${window.getEnergySourceColor(source)};"></div>
                                         </div>
                                         <span class="small fw-bold">${percentage}%</span>
                                     </div>
@@ -203,33 +203,4 @@ function displayDistrictDetails(district) {
             </button>
         </div>
     `;
-}
-
-// Helper functions for energy source display
-function getEnergySourceDisplayName(source) {
-    const displayNames = {
-        'gas': 'Erdgas',
-        'oil': 'Heizöl',
-        'electricity': 'Strom',
-        'biomass': 'Biomasse',
-        'district_heating': 'Fernwärme',
-        'heat_pump': 'Wärmepumpe',
-        'solar': 'Solar',
-        'other': 'Sonstige'
-    };
-    return displayNames[source] || source;
-}
-
-function getEnergySourceColor(source) {
-    const colors = {
-        'gas': '#ffc107',
-        'oil': '#6c757d',
-        'electricity': '#007bff',
-        'biomass': '#28a745',
-        'district_heating': '#dc3545',
-        'heat_pump': '#17a2b8',
-        'solar': '#fd7e14',
-        'other': '#6f42c1'
-    };
-    return colors[source] || '#6c757d';
 }
