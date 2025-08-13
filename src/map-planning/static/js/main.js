@@ -101,7 +101,7 @@ function displayTotalOverview(data) {
                         <hr>
                         <div class="text-center">
                             <small class="text-muted">Gesamtverbrauch</small>
-                            <div class="fw-bold fs-4 text-danger">${totalDemand.toLocaleString()} MWh</div>
+                            <div class="fw-bold fs-4 text-danger">${formatUtils.formatEnergy(totalDemand, 'MWh', 0)}</div>
                         </div>
                     </div>
                 </div>
@@ -118,7 +118,7 @@ function displayTotalOverview(data) {
                         <div class="row text-center">
                             <div class="col-6">
                                 <small class="text-muted">Gesamtpotential</small>
-                                <div class="fw-bold fs-5">${totalPotential.toLocaleString()}</div>
+                                <div class="fw-bold fs-5">${formatUtils.formatNumber(totalPotential, 0)}</div>
                                 <small class="text-muted">MWh/Jahr</small>
                             </div>
                             <div class="col-6">

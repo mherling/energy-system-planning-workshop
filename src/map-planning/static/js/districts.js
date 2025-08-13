@@ -59,7 +59,7 @@ function displayDistrictDetails(district) {
             <div class="col-6">
                 <div class="text-center p-3 bg-light rounded">
                     <h6 class="text-muted mb-1">Einwohner</h6>
-                    <h4 class="text-primary mb-0">${district.population.toLocaleString()}</h4>
+                    <h4 class="text-primary mb-0">${formatUtils.formatNumber(district.population, 0)}</h4>
                 </div>
             </div>
             <div class="col-6">
@@ -88,19 +88,19 @@ function displayDistrictDetails(district) {
                         <div class="row text-center">
                             <div class="col-6">
                                 <small class="text-muted">Strom</small>
-                                <div class="fw-bold fs-5">${(energyDemand.electricity_mwh || 0).toLocaleString()}</div>
+                                <div class="fw-bold fs-5">${formatUtils.formatNumber(energyDemand.electricity_mwh || 0, 0)}</div>
                                 <small class="text-muted">MWh/Jahr</small>
                             </div>
                             <div class="col-6">
                                 <small class="text-muted">Wärme</small>
-                                <div class="fw-bold fs-5">${(energyDemand.heating_mwh || 0).toLocaleString()}</div>
+                                <div class="fw-bold fs-5">${formatUtils.formatNumber(energyDemand.heating_mwh || 0, 0)}</div>
                                 <small class="text-muted">MWh/Jahr</small>
                             </div>
                         </div>
                         <hr>
                         <div class="text-center">
                             <small class="text-muted">Gesamtbedarf</small>
-                            <div class="fw-bold fs-4 text-danger">${totalDemand.toLocaleString()} MWh</div>
+                            <div class="fw-bold fs-4 text-danger">${formatUtils.formatEnergy(totalDemand, 'MWh', 0)}</div>
                         </div>
                     </div>
                 </div>

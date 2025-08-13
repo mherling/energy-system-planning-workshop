@@ -24,7 +24,7 @@ function createEnergyFlowContent(data) {
             <div class="col-md-8">
                 <h4>${data.name}</h4>
                 <p class="text-muted">
-                    ${(data.district_type || '').toUpperCase()} • ${(data.population || 0).toLocaleString()} Einwohner • ${data.area_km2 || 0} km²
+                    ${(data.district_type || '').toUpperCase()} • ${formatUtils.formatNumber(data.population || 0, 0)} Einwohner • ${data.area_km2 || 0} km²
                 </p>
                 <p class="small">${additional.description || data.description || 'Keine Beschreibung verfügbar'}</p>
             </div>
@@ -32,7 +32,7 @@ function createEnergyFlowContent(data) {
                 <div class="card bg-primary text-white">
                     <div class="card-body text-center">
                         <h6>Energiebilanz</h6>
-                        <h3>${(totalGeneration - totalDemand > 0 ? '+' : '')}${(totalGeneration - totalDemand).toLocaleString()} MWh</h3>
+                        <h3>${(totalGeneration - totalDemand > 0 ? '+' : '')}${formatUtils.formatEnergy(Math.abs(totalGeneration - totalDemand), 'MWh', 0)}</h3>
                         <small>${totalGeneration >= totalDemand ? 'Energieüberschuss' : 'Energiedefizit'}</small>
                     </div>
                 </div>
@@ -45,7 +45,7 @@ function createEnergyFlowContent(data) {
                 <div class="card text-center">
                     <div class="card-body">
                         <h6 class="card-title text-danger">Stromverbrauch</h6>
-                        <h4>${(energyDemand.electricity_mwh || 0).toLocaleString()} MWh</h4>
+                        <h4>${formatUtils.formatEnergy(energyDemand.electricity_mwh || 0, 'MWh', 0)}</h4>
                     </div>
                 </div>
             </div>
@@ -53,7 +53,7 @@ function createEnergyFlowContent(data) {
                 <div class="card text-center">
                     <div class="card-body">
                         <h6 class="card-title text-warning">Wärmeverbrauch</h6>
-                        <h4>${(energyDemand.heating_mwh || 0).toLocaleString()} MWh</h4>
+                        <h4>${formatUtils.formatEnergy(energyDemand.heating_mwh || 0, 'MWh', 0)}</h4>
                     </div>
                 </div>
             </div>
@@ -61,8 +61,8 @@ function createEnergyFlowContent(data) {
                 <div class="card text-center">
                     <div class="card-body">
                         <h6 class="card-title text-success">EE-Erzeugung</h6>
-                        <h4>${totalGeneration.toLocaleString()} MWh</h4>
-                        <small class="text-muted">${renewableShare}% des Bedarfs</small>
+                        <h4>${formatUtils.formatEnergy(totalGeneration, 'MWh', 0)}</h4>
+                        <small class="text-muted">${formatUtils.formatPercentage(renewableShare, 0)} des Bedarfs</small>
                     </div>
                 </div>
             </div>
@@ -70,8 +70,8 @@ function createEnergyFlowContent(data) {
                 <div class="card text-center">
                     <div class="card-body">
                         <h6 class="card-title text-info">EE-Potential</h6>
-                        <h4>${totalPotential.toLocaleString()} MWh</h4>
-                        <small class="text-muted">${totalPotential > 0 ? Math.round((totalGeneration / totalPotential) * 100) : 0}% genutzt</small>
+                        <h4>${formatUtils.formatEnergy(totalPotential, 'MWh', 0)}</h4>
+                        <small class="text-muted">${formatUtils.formatPercentage(totalPotential > 0 ? Math.round((totalGeneration / totalPotential) * 100) : 0, 0)} genutzt</small>
                     </div>
                 </div>
             </div>
@@ -86,15 +86,15 @@ function createEnergyFlowContent(data) {
                     </div>
                     <div class="card-body">
                         <ul class="list-unstyled">
-                            <li><strong>Strom Gesamt:</strong> ${(energyDemand.electricity_mwh || 0).toLocaleString()} MWh</li>
-                            <li>- Haushalte: ${Math.round((energyDemand.electricity_mwh || 0) * 0.4).toLocaleString()} MWh</li>
-                            <li>- Gewerbe: ${Math.round((energyDemand.electricity_mwh || 0) * 0.35).toLocaleString()} MWh</li>
-                            <li>- Industrie: ${Math.round((energyDemand.electricity_mwh || 0) * 0.25).toLocaleString()} MWh</li>
-                            <li><strong>Wärme Gesamt:</strong> ${(energyDemand.heating_mwh || 0).toLocaleString()} MWh</li>
-                            <li>- Raumheizung: ${Math.round((energyDemand.heating_mwh || 0) * 0.75).toLocaleString()} MWh</li>
-                            <li>- Warmwasser: ${Math.round((energyDemand.heating_mwh || 0) * 0.25).toLocaleString()} MWh</li>
-                            <li><strong>Kühlung:</strong> ${(energyDemand.cooling_mwh || 0).toLocaleString()} MWh</li>
-                            <li><strong>Transport:</strong> ${(energyDemand.transport_mwh || 0).toLocaleString()} MWh</li>
+                            <li><strong>Strom Gesamt:</strong> ${formatUtils.formatEnergy(energyDemand.electricity_mwh || 0, 'MWh', 0)}</li>
+                            <li>- Haushalte: ${formatUtils.formatEnergy(Math.round((energyDemand.electricity_mwh || 0) * 0.4), 'MWh', 0)}</li>
+                            <li>- Gewerbe: ${formatUtils.formatEnergy(Math.round((energyDemand.electricity_mwh || 0) * 0.35), 'MWh', 0)}</li>
+                            <li>- Industrie: ${formatUtils.formatEnergy(Math.round((energyDemand.electricity_mwh || 0) * 0.25), 'MWh', 0)}</li>
+                            <li><strong>Wärme Gesamt:</strong> ${formatUtils.formatEnergy(energyDemand.heating_mwh || 0, 'MWh', 0)}</li>
+                            <li>- Raumheizung: ${formatUtils.formatEnergy(Math.round((energyDemand.heating_mwh || 0) * 0.75), 'MWh', 0)}</li>
+                            <li>- Warmwasser: ${formatUtils.formatEnergy(Math.round((energyDemand.heating_mwh || 0) * 0.25), 'MWh', 0)}</li>
+                            <li><strong>Kühlung:</strong> ${formatUtils.formatEnergy(energyDemand.cooling_mwh || 0, 'MWh', 0)}</li>
+                            <li><strong>Transport:</strong> ${formatUtils.formatEnergy(energyDemand.transport_mwh || 0, 'MWh', 0)}</li>
                         </ul>
                     </div>
                 </div>
@@ -106,12 +106,12 @@ function createEnergyFlowContent(data) {
                     </div>
                     <div class="card-body">
                         <ul class="list-unstyled">
-                            <li><strong>Solar PV:</strong> ${(renewables.solar_pv_mwh || 0).toLocaleString()} MWh</li>
-                            <li><strong>Solarthermie:</strong> ${(renewables.solar_thermal_mwh || 0).toLocaleString()} MWh</li>
-                            <li><strong>Kleinwind:</strong> ${(renewables.small_wind_mwh || 0).toLocaleString()} MWh</li>
-                            <li><strong>Biomasse:</strong> ${(renewables.biomass_mwh || 0).toLocaleString()} MWh</li>
-                            <li><strong>Geothermie:</strong> ${(renewables.geothermal_mwh || 0).toLocaleString()} MWh</li>
-                            <li><strong>Gesamt:</strong> ${totalPotential.toLocaleString()} MWh</li>
+                            <li><strong>Solar PV:</strong> ${formatUtils.formatEnergy(renewables.solar_pv_mwh || 0, 'MWh', 0)}</li>
+                            <li><strong>Solarthermie:</strong> ${formatUtils.formatEnergy(renewables.solar_thermal_mwh || 0, 'MWh', 0)}</li>
+                            <li><strong>Kleinwind:</strong> ${formatUtils.formatEnergy(renewables.small_wind_mwh || 0, 'MWh', 0)}</li>
+                            <li><strong>Biomasse:</strong> ${formatUtils.formatEnergy(renewables.biomass_mwh || 0, 'MWh', 0)}</li>
+                            <li><strong>Geothermie:</strong> ${formatUtils.formatEnergy(renewables.geothermal_mwh || 0, 'MWh', 0)}</li>
+                            <li><strong>Gesamt:</strong> ${formatUtils.formatEnergy(totalPotential, 'MWh', 0)}</li>
                         </ul>
                     </div>
                 </div>
