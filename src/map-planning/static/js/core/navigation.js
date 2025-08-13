@@ -12,21 +12,90 @@ function selectDistrictFromOverview(districtId) {
 }
 
 // Show overview
-function showOverview() {
-    // Reset map view and clear selections
-    map.setView([50.8994, 14.8076], 14);
-    Object.values(districtLayers).forEach(layer => {
-        layer.setStyle({ weight: 2 });
-    });
+async function showOverview() {
+    // Restore original layout if configuration was shown
+    const contentContainer = document.getElementById('content');
+    if (contentContainer) {
+        contentContainer.innerHTML = `
+            <div class="row h-100">
+                <!-- Map Section -->
+                <div class="col-lg-4 h-100">
+                    <div class="position-relative h-100">
+                        <div id="map"></div>
+                        <div class="grid-legend">
+                            <h6 class="mb-2">Quartiere Zittau</h6>
+                            <div><span style="color: #28a745;">●</span> Hoher Verbrauch</div>
+                            <div><span style="color: #ffc107;">●</span> Mittlerer Verbrauch</div>
+                            <div><span style="color: #17a2b8;">●</span> Niedriger Verbrauch</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Selected District Panel -->
+                <div class="col-lg-4 h-100" style="overflow-y: auto;">
+                    <div class="card h-100">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="bi bi-geo-alt-fill"></i>
+                                <span id="selectedDistrictTitle">Quartier auswählen</span>
+                            </h5>
+                        </div>
+                        <div class="card-body" id="selectedDistrictContent">
+                            <div class="text-center text-muted py-5">
+                                <i class="bi bi-cursor text-muted" style="font-size: 3rem;"></i>
+                                <p class="mt-3">Klicken Sie auf ein Quartier in der Karte, um Details anzuzeigen</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Total Overview Panel -->
+                <div class="col-lg-4 h-100" style="overflow-y: auto;">
+                    <div class="card h-100">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">
+                                <i class="bi bi-grid-3x3-gap-fill"></i>
+                                Gesamtübersicht Zittau
+                            </h5>
+                        </div>
+                        <div class="card-body" id="totalOverviewContent">
+                            <div class="text-center">
+                                <div class="spinner-border text-success" role="status">
+                                    <span class="visually-hidden">Wird geladen...</span>
+                                </div>
+                                <p class="mt-3">Gesamtdaten werden geladen...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Reinitialize map and load data
+        try {
+            if (typeof initializeMap === 'function') {
+                initializeMap();
+                console.log('Map reinitialized');
+            }
+            
+            if (typeof loadData === 'function') {
+                await loadData();
+                console.log('Data reloaded');
+            }
+        } catch (error) {
+            console.error('Error reinitializing application:', error);
+        }
+    }
     
-    // Reset selected district panel
-    document.getElementById('selectedDistrictTitle').textContent = 'Quartier auswählen';
-    document.getElementById('selectedDistrictContent').innerHTML = `
-        <div class="text-center text-muted py-5">
-            <i class="bi bi-cursor text-muted" style="font-size: 3rem;"></i>
-            <p class="mt-3">Klicken Sie auf ein Quartier in der Karte, um Details anzuzeigen</p>
-        </div>
-    `;
+    // Reset map view and clear selections (only if map exists)
+    if (typeof map !== 'undefined' && map) {
+        map.setView([50.8994, 14.8076], 14);
+        if (typeof districtLayers !== 'undefined') {
+            Object.values(districtLayers).forEach(layer => {
+                layer.setStyle({ weight: 2 });
+            });
+        }
+    }
     
     currentDistrict = null;
 }

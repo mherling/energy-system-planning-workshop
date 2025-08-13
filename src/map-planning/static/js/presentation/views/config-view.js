@@ -63,7 +63,7 @@ class ConfigView {
                 <!-- Tab Content -->
                 <div class="tab-content" id="configTabContent">
                     <div class="tab-pane fade show active" id="quartiere-content" role="tabpanel">
-                        <div id="quartiere-container">
+                        <div id="quartiere-container" style="max-height: calc(100vh - 280px); overflow-y: auto; padding-right: 10px;">
                             <div class="d-flex justify-content-center">
                                 <div class="spinner-border text-primary" role="status">
                                     <span class="visually-hidden">Lade Quartiere...</span>
@@ -72,7 +72,7 @@ class ConfigView {
                         </div>
                     </div>
                     <div class="tab-pane fade" id="system-content" role="tabpanel">
-                        <div id="system-container">
+                        <div id="system-container" style="max-height: calc(100vh - 280px); overflow-y: auto; padding-right: 10px;">
                             <div class="d-flex justify-content-center">
                                 <div class="spinner-border text-primary" role="status">
                                     <span class="visually-hidden">Lade System-Parameter...</span>
@@ -81,7 +81,7 @@ class ConfigView {
                         </div>
                     </div>
                     <div class="tab-pane fade" id="technologien-content" role="tabpanel">
-                        <div id="technologien-container">
+                        <div id="technologien-container" style="max-height: calc(100vh - 280px); overflow-y: auto; padding-right: 10px;">
                             <div class="d-flex justify-content-center">
                                 <div class="spinner-border text-primary" role="status">
                                     <span class="visually-hidden">Lade Technologien...</span>
@@ -90,7 +90,7 @@ class ConfigView {
                         </div>
                     </div>
                     <div class="tab-pane fade" id="stakeholder-templates-content" role="tabpanel">
-                        <div id="stakeholder-templates-container">
+                        <div id="stakeholder-templates-container" style="max-height: calc(100vh - 280px); overflow-y: auto; padding-right: 10px;">
                             <div class="d-flex justify-content-center">
                                 <div class="spinner-border text-primary" role="status">
                                     <span class="visually-hidden">Lade Stakeholder-Templates...</span>
@@ -348,26 +348,49 @@ class ConfigView {
      * @returns {string} HTML für Szenarien-Visualisierung
      */
     static renderEnergyScenarios(scenarios) {
-        const scenarioCards = Object.entries(scenarios.scenarios).map(([key, scenario]) => `
-            <div class="col-lg-4 mb-4">
-                <div class="card h-100">
-                    <div class="card-header">
-                        <h6 class="mb-0">${scenario.name}</h6>
-                    </div>
-                    <div class="card-body">
-                        <p class="text-muted">${scenario.description}</p>
-                        ${this.renderScenarioPriceTable(scenario)}
+        console.log('renderEnergyScenarios called with:', scenarios);
+        
+        // Handle different data structures
+        let scenarioData = scenarios;
+        if (scenarios && scenarios.scenarios) {
+            scenarioData = scenarios.scenarios;
+        }
+        
+        if (!scenarioData || typeof scenarioData !== 'object' || Object.keys(scenarioData).length === 0) {
+            return `
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Keine Energiepreis-Szenarien verfügbar
+                </div>
+            `;
+        }
+        
+        const scenarioCards = Object.entries(scenarioData).map(([key, scenario]) => {
+            console.log(`Processing scenario ${key}:`, scenario);
+            return `
+                <div class="col-lg-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0 text-primary">${scenario.name || key}</h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted mb-3">${scenario.description || 'Keine Beschreibung verfügbar'}</p>
+                            ${this.renderScenarioPriceTable(scenario)}
+                        </div>
                     </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
+        
+        const scenarioCount = Object.keys(scenarioData).length;
         
         return `
             <div class="mb-4">
                 <h5>
                     <i class="bi bi-graph-up me-2"></i>Energiepreis-Szenarien
-                    <span class="badge bg-primary ms-2">${scenarios.scenario_count} Szenarien</span>
+                    <span class="badge bg-primary ms-2">${scenarioCount} Szenarien</span>
                 </h5>
+                <p class="text-muted">Übersicht der konfigurierten Preisszenarien für die Energieplanung</p>
             </div>
             <div class="row">
                 ${scenarioCards}
@@ -481,23 +504,286 @@ class ConfigView {
     }
     
     static renderRegionalParameters(params) {
-        return '<div class="alert alert-info">Regionale Parameter werden geladen...</div>';
+        if (!params || !params.location) return '<div class="alert alert-warning">Keine regionalen Parameter verfügbar</div>';
+        
+        const location = params.location || {};
+        const weatherData = params.weather_data || {};
+        const economicData = params.economic_data || {};
+        const regulatory = params.regulatory_framework || {};
+        
+        return `
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <h6 class="text-muted mb-2">📍 Standort</h6>
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5">Stadt:</dt>
+                        <dd class="col-sm-7">${location.name || 'N/A'}</dd>
+                        <dt class="col-sm-5">Koordinaten:</dt>
+                        <dd class="col-sm-7">${location.latitude || 'N/A'}°N, ${location.longitude || 'N/A'}°E</dd>
+                        <dt class="col-sm-5">Höhe:</dt>
+                        <dd class="col-sm-7">${location.elevation_m || 'N/A'} m ü. NN</dd>
+                        <dt class="col-sm-5">Klimazone:</dt>
+                        <dd class="col-sm-7">${location.climate_zone || 'N/A'}</dd>
+                    </dl>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <h6 class="text-muted mb-2">🌤️ Wetter</h6>
+                    <dl class="row mb-0">
+                        <dt class="col-sm-6">Ø Temperatur:</dt>
+                        <dd class="col-sm-6">${weatherData.avg_temperature_celsius || 'N/A'}°C</dd>
+                        <dt class="col-sm-6">Heizgradtage:</dt>
+                        <dd class="col-sm-6">${window.formatUtils.formatNumber(weatherData.heating_degree_days) || 'N/A'}</dd>
+                        <dt class="col-sm-6">Solarstrahlung:</dt>
+                        <dd class="col-sm-6">${weatherData.solar_irradiation_kwh_per_m2 || 'N/A'} kWh/m²</dd>
+                        <dt class="col-sm-6">Windgeschw.:</dt>
+                        <dd class="col-sm-6">${weatherData.wind_speed_avg_m_per_s || 'N/A'} m/s</dd>
+                    </dl>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <h6 class="text-muted mb-2">💼 Wirtschaftsdaten</h6>
+                    <dl class="row mb-0">
+                        <dt class="col-sm-6">Medianeinkommen:</dt>
+                        <dd class="col-sm-6">${window.formatUtils.formatCurrency(economicData.median_income_eur) || 'N/A'}</dd>
+                        <dt class="col-sm-6">Arbeitslosigkeit:</dt>
+                        <dd class="col-sm-6">${economicData.unemployment_rate_pct || 'N/A'}%</dd>
+                        <dt class="col-sm-6">Immobilienpreise:</dt>
+                        <dd class="col-sm-6">${window.formatUtils.formatCurrency(economicData.property_prices_eur_per_m2) || 'N/A'}/m²</dd>
+                        <dt class="col-sm-6">Gewerbesteuer:</dt>
+                        <dd class="col-sm-6">${economicData.business_tax_rate_pct || 'N/A'}%</dd>
+                    </dl>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <h6 class="text-muted mb-2">⚖️ Rechtlicher Rahmen</h6>
+                    <dl class="row mb-0">
+                        <dt class="col-sm-6">EEG:</dt>
+                        <dd class="col-sm-6">${regulatory.renewable_energy_law || 'N/A'}</dd>
+                        <dt class="col-sm-6">GEG:</dt>
+                        <dd class="col-sm-6">${regulatory.building_energy_law || 'N/A'}</dd>
+                        <dt class="col-sm-6">CO₂-Budget:</dt>
+                        <dd class="col-sm-6">${window.formatUtils.formatNumber(regulatory.co2_budget_tons) || 'N/A'} t/Jahr</dd>
+                        <dt class="col-sm-6">EE-Ziel 2030:</dt>
+                        <dd class="col-sm-6">${regulatory.renewable_target_pct || 'N/A'}%</dd>
+                    </dl>
+                </div>
+            </div>
+        `;
     }
     
     static renderEmissionFactors(factors) {
-        return '<div class="alert alert-info">Emissionsfaktoren werden geladen...</div>';
+        if (!factors || Object.keys(factors).length === 0) return '<div class="alert alert-warning">Keine Emissionsfaktoren verfügbar</div>';
+        
+        const factorItems = Object.entries(factors).map(([key, value]) => {
+            const label = this.getEmissionFactorLabel(key);
+            const formattedValue = typeof value === 'number' ? value.toFixed(3) : value;
+            return `
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-muted">${label}:</span>
+                    <span class="fw-bold">${formattedValue} kg CO₂/kWh</span>
+                </div>
+            `;
+        }).join('');
+        
+        return `
+            <div class="emission-factors">
+                ${factorItems}
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Faktoren basierend auf aktuellen deutschen Durchschnittswerten
+                    </small>
+                </div>
+            </div>
+        `;
     }
     
     static renderTechnicalParameters(params) {
-        return '<div class="alert alert-info">Technische Parameter werden geladen...</div>';
+        if (!params || Object.keys(params).length === 0) return '<div class="alert alert-warning">Keine technischen Parameter verfügbar</div>';
+        
+        return `
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <h6 class="text-muted mb-2">⏱️ Planungsparameter</h6>
+                    <dl class="row mb-0">
+                        <dt class="col-sm-7">Planungshorizont:</dt>
+                        <dd class="col-sm-5">${params.planning_horizon_years || 'N/A'} Jahre</dd>
+                        <dt class="col-sm-7">Diskontierungssatz:</dt>
+                        <dd class="col-sm-5">${((params.discount_rate || 0) * 100).toFixed(1)}%</dd>
+                        <dt class="col-sm-7">Inflationsrate:</dt>
+                        <dd class="col-sm-5">${((params.inflation_rate || 0) * 100).toFixed(1)}%</dd>
+                    </dl>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <h6 class="text-muted mb-2">⚡ Systemparameter</h6>
+                    <dl class="row mb-0">
+                        <dt class="col-sm-7">Netzeffizienz:</dt>
+                        <dd class="col-sm-5">${((params.grid_efficiency || 0) * 100).toFixed(1)}%</dd>
+                        <dt class="col-sm-7">Speichereffizienz:</dt>
+                        <dd class="col-sm-5">${((params.storage_efficiency || 0) * 100).toFixed(1)}%</dd>
+                        <dt class="col-sm-7">Spitzenlastfaktor:</dt>
+                        <dd class="col-sm-5">${params.peak_load_factor || 'N/A'}</dd>
+                    </dl>
+                </div>
+            </div>
+            <div class="mt-3">
+                <small class="text-muted">
+                    <i class="bi bi-gear me-1"></i>
+                    Diese Parameter werden für alle Berechnungen und Analysen verwendet
+                </small>
+            </div>
+        `;
     }
     
     static renderAnalysisSettings(settings) {
-        return '<div class="alert alert-info">Analyse-Einstellungen werden geladen...</div>';
+        if (!settings || Object.keys(settings).length === 0) return '<div class="alert alert-warning">Keine Analyse-Einstellungen verfügbar</div>';
+        
+        const energyBalance = settings.energy_balance || {};
+        const co2Analysis = settings.co2_analysis || {};
+        const economicAnalysis = settings.economic_analysis || {};
+        const stakeholderAnalysis = settings.stakeholder_analysis || {};
+        
+        return `
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <h6 class="text-muted mb-2">⚡ Energiebilanz</h6>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" ${energyBalance.include_storage ? 'checked' : ''} disabled>
+                        <label class="form-check-label">Speicher einbeziehen</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" ${energyBalance.seasonal_adjustment ? 'checked' : ''} disabled>
+                        <label class="form-check-label">Saisonale Anpassung</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" ${energyBalance.grid_import_export ? 'checked' : ''} disabled>
+                        <label class="form-check-label">Netz-Import/Export</label>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <h6 class="text-muted mb-2">🌱 CO₂-Analyse</h6>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" ${co2Analysis.include_upstream_emissions ? 'checked' : ''} disabled>
+                        <label class="form-check-label">Vorgelagerte Emissionen</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" ${co2Analysis.lifecycle_assessment ? 'checked' : ''} disabled>
+                        <label class="form-check-label">Lebenszyklus-Bewertung</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" ${co2Analysis.carbon_budget_tracking ? 'checked' : ''} disabled>
+                        <label class="form-check-label">CO₂-Budget-Tracking</label>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <h6 class="text-muted mb-2">💰 Wirtschaftsanalyse</h6>
+                    <dl class="row mb-0">
+                        <dt class="col-sm-8">Externalitäten:</dt>
+                        <dd class="col-sm-4">${economicAnalysis.include_externalities ? 'Ja' : 'Nein'}</dd>
+                        <dt class="col-sm-8">CO₂-Kosten:</dt>
+                        <dd class="col-sm-4">${economicAnalysis.social_cost_of_carbon || 'N/A'} €/t</dd>
+                        <dt class="col-sm-8">Sozialer Diskont:</dt>
+                        <dd class="col-sm-4">${((economicAnalysis.discount_rate_social || 0) * 100).toFixed(1)}%</dd>
+                    </dl>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <h6 class="text-muted mb-2">👥 Stakeholder-Analyse</h6>
+                    <dl class="row mb-0">
+                        <dt class="col-sm-6">Hoch:</dt>
+                        <dd class="col-sm-6">Gewichtung ${stakeholderAnalysis.influence_weighting?.high || 'N/A'}</dd>
+                        <dt class="col-sm-6">Mittel:</dt>
+                        <dd class="col-sm-6">Gewichtung ${stakeholderAnalysis.influence_weighting?.medium || 'N/A'}</dd>
+                        <dt class="col-sm-6">Niedrig:</dt>
+                        <dd class="col-sm-6">Gewichtung ${stakeholderAnalysis.influence_weighting?.low || 'N/A'}</dd>
+                        <dt class="col-sm-6">Beteiligungsbonus:</dt>
+                        <dd class="col-sm-6">${stakeholderAnalysis.participation_bonus || 'N/A'}</dd>
+                    </dl>
+                </div>
+            </div>
+        `;
     }
     
     static renderScenarioPriceTable(scenario) {
-        return '<div class="alert alert-info">Preistabelle wird geladen...</div>';
+        console.log('renderScenarioPriceTable called with:', scenario);
+        
+        if (!scenario || typeof scenario !== 'object') {
+            return '<div class="alert alert-warning">Keine Preisdaten verfügbar</div>';
+        }
+        
+        const years = [2025, 2030, 2040, 2050];
+        const priceTypes = [
+            { key: 'electricity_prices', label: 'Strom', unit: '€/kWh', color: 'primary' },
+            { key: 'gas_prices', label: 'Gas', unit: '€/kWh', color: 'info' },
+            { key: 'heat_prices', label: 'Fernwärme', unit: '€/kWh', color: 'warning' },
+            { key: 'co2_prices', label: 'CO₂', unit: '€/t', color: 'success' }
+        ];
+        
+        const tableRows = priceTypes.map(priceType => {
+            const prices = scenario[priceType.key] || {};
+            console.log(`Processing ${priceType.key}:`, prices);
+            
+            const yearCells = years.map(year => {
+                const price = prices[year];
+                let formattedPrice = 'N/A';
+                
+                if (price !== undefined && price !== null) {
+                    if (priceType.unit === '€/t') {
+                        formattedPrice = window.formatUtils.formatNumber(price, 0);
+                    } else {
+                        formattedPrice = price.toFixed(3);
+                    }
+                }
+                
+                return `<td class="text-center">${formattedPrice}</td>`;
+            }).join('');
+            
+            return `
+                <tr>
+                    <td>
+                        <span class="badge bg-${priceType.color} me-2">●</span>
+                        ${priceType.label}
+                    </td>
+                    ${yearCells}
+                    <td class="text-muted small">${priceType.unit}</td>
+                </tr>
+            `;
+        }).join('');
+        
+        return `
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 25%;">Energieträger</th>
+                            <th class="text-center" style="width: 15%;">2025</th>
+                            <th class="text-center" style="width: 15%;">2030</th>
+                            <th class="text-center" style="width: 15%;">2040</th>
+                            <th class="text-center" style="width: 15%;">2050</th>
+                            <th style="width: 15%;">Einheit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-2">
+                <small class="text-muted">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Alle Preise sind Endkundenpreise inkl. Steuern und Abgaben
+                </small>
+            </div>
+        `;
+    }
+    
+    // Helper method for emission factor labels
+    static getEmissionFactorLabel(key) {
+        const labels = {
+            'electricity_grid_kg_co2_per_kwh': 'Strommix Deutschland',
+            'gas_kg_co2_per_kwh': 'Erdgas',
+            'heating_oil_kg_co2_per_kwh': 'Heizöl',
+            'district_heating_kg_co2_per_kwh': 'Fernwärme',
+            'biomass_kg_co2_per_kwh': 'Biomasse'
+        };
+        return labels[key] || key.replace(/_/g, ' ');
     }
     
     static renderTechnologyCard(key, template) {

@@ -117,3 +117,8 @@ function highlightSelectedDistrict(districtId) {
         districtLayers[districtId].setStyle({ weight: 4 });
     }
 }
+
+// Export functions to global scope
+window.initializeMap = initializeMap;
+window.createQuartiersOnMap = createQuartiersOnMap;
+window.highlightSelectedDistrict = highlightSelectedDistrict;
