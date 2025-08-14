@@ -140,6 +140,11 @@ class ApiClient {
     async getEnergyScenarios() {
         return this.get('/api/energy-scenarios');
     }
+    
+    // System Configuration API methods
+    async getSystemConfig() {
+        return this.get('/api/system-config');
+    }
 }
 
 // Global API client instance

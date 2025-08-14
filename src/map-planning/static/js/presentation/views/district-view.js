@@ -11,7 +11,7 @@ function selectDistrict(district) {
 }
 
 // Display district details in selected district panel
-function displayDistrictDetails(district) {
+async function displayDistrictDetails(district) {
     // Update title
     document.getElementById('selectedDistrictTitle').textContent = district.name;
     
@@ -220,12 +220,214 @@ function displayDistrictDetails(district) {
             </div>
         </div>
         
+        <!-- Resultierende Ergebnisse - Kosten & CO2 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="mb-0"><i class="bi bi-calculator"></i> Resultierende Ergebnisse</h6>
+                    </div>
+                    <div class="card-body" id="resultsContent-${district.id}">
+                        <div class="text-center">
+                            <div class="spinner-border text-info" role="status">
+                                <span class="visually-hidden">Berechne Ergebnisse...</span>
+                            </div>
+                            <p class="mt-2">Kosten und CO2-Bilanz werden berechnet...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- Action Buttons -->
         <div class="d-grid gap-2">
             <button class="btn btn-primary" onclick="showDetailedAnalysis('${district.id}')">
                 <i class="bi bi-bar-chart-line"></i> Detailanalyse anzeigen
             </button>
         </div>`;
+    
+    // Load results asynchronously after UI is rendered
+    setTimeout(async () => {
+        try {
+            await loadDistrictResults(district);
+        } catch (error) {
+            console.error('Error loading district results:', error);
+            const resultsContainer = document.getElementById(`resultsContent-${district.id}`);
+            if (resultsContainer) {
+                resultsContainer.innerHTML = `
+                    <div class="alert alert-warning">
+                        <h6>Fehler bei der Berechnung</h6>
+                        <p>Die Kosten- und CO2-Berechnung konnte nicht durchgeführt werden.</p>
+                        <small>${error.message}</small>
+                    </div>
+                `;
+            }
+        }
+    }, 100);
+}
+
+// Load and display district results (costs & CO2)
+async function loadDistrictResults(district) {
+    try {
+        let systemConfig;
+        
+        // Try to load system config from API
+        if (typeof apiClient !== 'undefined' && apiClient.getSystemConfig) {
+            systemConfig = await apiClient.getSystemConfig();
+        } else {
+            // Fallback to fetch if apiClient is not ready
+            const response = await fetch('/api/system-config');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            systemConfig = await response.json();
+        }
+        
+        // Calculate results using economic analysis utility
+        if (typeof calculateDistrictResults !== 'function') {
+            throw new Error('calculateDistrictResults function is not available. Please check if economic-analysis.js is loaded.');
+        }
+        
+        const results = calculateDistrictResults(district, systemConfig);
+        
+        // Generate results HTML
+        const resultsHTML = generateResultsHTML(results);
+        
+        // Update results container
+        const resultsContainer = document.getElementById(`resultsContent-${district.id}`);
+        if (resultsContainer) {
+            resultsContainer.innerHTML = resultsHTML;
+        }
+        
+    } catch (error) {
+        console.error('Error in loadDistrictResults:', error);
+        throw new Error(`Fehler beim Laden der Systemkonfiguration: ${error.message}`);
+    }
+}
+
+// Generate HTML for results display
+function generateResultsHTML(results) {
+    const costs = results.costs;
+    const emissions = results.emissions;
+    
+    return `
+        <!-- Kosten-Übersicht -->
+        <div class="row mb-3">
+            <div class="col-6">
+                <div class="text-center p-3 border rounded">
+                    <small class="text-muted">Jährliche Energiekosten</small>
+                    <div class="fw-bold fs-5 text-danger">${formatNumber(costs.net_costs, 0)} €</div>
+                    <small class="text-muted">Pro Kopf: ${formatNumber(results.costs_per_capita, 0)} €</small>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="text-center p-3 border rounded">
+                    <small class="text-muted">CO2-Emissionen</small>
+                    <div class="fw-bold fs-5 text-warning">${formatNumber(emissions.net_emissions_tons, 1)} t</div>
+                    <small class="text-muted">Pro Kopf: ${formatNumber(emissions.per_capita_tons, 1)} t</small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Kosten-Aufschlüsselung -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <h6 class="text-primary mb-2"><i class="bi bi-currency-euro"></i> Kosten-Aufschlüsselung</h6>
+                <div class="row text-center">
+                    <div class="col-3">
+                        <small class="text-muted">Strom</small>
+                        <div class="fw-bold text-primary">${formatNumber(costs.breakdown.electricity, 0)} €</div>
+                    </div>
+                    <div class="col-3">
+                        <small class="text-muted">Heizung</small>
+                        <div class="fw-bold text-orange">${formatNumber(costs.breakdown.heating, 0)} €</div>
+                    </div>
+                    <div class="col-3">
+                        <small class="text-muted">Kühlung</small>
+                        <div class="fw-bold text-info">${formatNumber(costs.breakdown.cooling, 0)} €</div>
+                    </div>
+                    <div class="col-3">
+                        <small class="text-muted">Transport</small>
+                        <div class="fw-bold text-secondary">${formatNumber(costs.breakdown.transport, 0)} €</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- EE-Einsparungen -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="alert alert-success">
+                    <h6><i class="bi bi-piggy-bank"></i> EE-Einsparungen</h6>
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <small>Solar PV</small>
+                            <div class="fw-bold">${formatNumber(costs.renewable_breakdown.solar_pv_savings, 0)} €</div>
+                        </div>
+                        <div class="col-4">
+                            <small>Solar Thermal</small>
+                            <div class="fw-bold">${formatNumber(costs.renewable_breakdown.solar_thermal_savings, 0)} €</div>
+                        </div>
+                        <div class="col-4">
+                            <small>Biomasse</small>
+                            <div class="fw-bold">${formatNumber(costs.renewable_breakdown.biomass_savings, 0)} €</div>
+                        </div>
+                    </div>
+                    <hr class="my-2">
+                    <div class="text-center">
+                        <strong>Gesamt-Einsparungen: ${formatNumber(costs.renewable_savings, 0)} € / Jahr</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- CO2-Aufschlüsselung -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <h6 class="text-warning mb-2"><i class="bi bi-cloud-arrow-up"></i> CO2-Aufschlüsselung</h6>
+                <div class="row text-center">
+                    <div class="col-3">
+                        <small class="text-muted">Strom</small>
+                        <div class="fw-bold text-primary">${formatNumber(emissions.breakdown.electricity_kg / 1000, 1)} t</div>
+                    </div>
+                    <div class="col-3">
+                        <small class="text-muted">Heizung</small>
+                        <div class="fw-bold text-orange">${formatNumber(emissions.breakdown.heating_kg / 1000, 1)} t</div>
+                    </div>
+                    <div class="col-3">
+                        <small class="text-muted">Kühlung</small>
+                        <div class="fw-bold text-info">${formatNumber(emissions.breakdown.cooling_kg / 1000, 1)} t</div>
+                    </div>
+                    <div class="col-3">
+                        <small class="text-muted">Transport</small>
+                        <div class="fw-bold text-secondary">${formatNumber(emissions.breakdown.transport_kg / 1000, 1)} t</div>
+                    </div>
+                </div>
+                <div class="mt-2 text-center">
+                    <small class="text-success">
+                        <i class="bi bi-arrow-down"></i> EE-Einsparungen: ${formatNumber(emissions.emission_savings_tons, 1)} t CO2 vermieden
+                    </small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- CO2-Kosten -->
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <h6><i class="bi bi-calculator"></i> Monetäre CO2-Bewertung</h6>
+                    <div class="text-center">
+                        <div class="fw-bold fs-5">${formatNumber(results.co2_costs, 0)} €</div>
+                        <small class="text-muted">Soziale CO2-Kosten (180 €/t CO2)</small>
+                    </div>
+                    <hr class="my-2">
+                    <div class="text-center">
+                        <strong class="fs-6">Gesamtkosten inkl. CO2: ${formatNumber(results.total_annual_costs, 0)} € / Jahr</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 // Export to global scope
