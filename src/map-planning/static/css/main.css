@@ -69,3 +69,125 @@ body {
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     z-index: 1000;
 }
+
+/* Custom orange color for heating */
+.text-orange {
+    color: #fd7e14 !important;
+}
+
+.bg-orange {
+    background-color: #fd7e14 !important;
+}
+
+/* Cost Timeline Chart Styles */
+.cost-timeline-chart {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.cost-timeline-chart .chart-container {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    position: relative;
+    border: 2px solid #dee2e6;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.cost-timeline-chart svg {
+    overflow: visible;
+}
+
+.cost-timeline-chart polyline {
+    filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.15));
+    transition: stroke-width 0.3s ease;
+}
+
+.cost-timeline-chart polyline:hover {
+    stroke-width: 5;
+}
+
+.cost-timeline-chart circle {
+    filter: drop-shadow(1px 1px 3px rgba(0,0,0,0.15));
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.cost-timeline-chart circle:hover {
+    r: 8;
+    filter: drop-shadow(2px 2px 6px rgba(0,0,0,0.25));
+}
+
+.cost-timeline-chart .table th {
+    border-top: none;
+    background-color: #343a40;
+    color: white;
+    font-weight: 600;
+    font-size: 0.9em;
+    padding: 0.75rem;
+}
+
+.cost-timeline-chart .table td {
+    font-size: 0.85em;
+    padding: 0.6rem;
+    border-top: 1px solid #e9ecef;
+    vertical-align: middle;
+}
+
+.cost-timeline-chart .table-hover tbody tr:hover {
+    background-color: rgba(0,123,255,0.05);
+}
+
+/* Enhanced badge styling for scenarios */
+.cost-timeline-chart .badge {
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.cost-timeline-chart .badge:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Summary card enhancements */
+.cost-timeline-chart .bg-light.rounded {
+    border: 1px solid #e9ecef;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.cost-timeline-chart .bg-light.rounded:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border-color: #007bff;
+}
+
+/* Responsive adjustments for timeline chart */
+@media (max-width: 768px) {
+    .cost-timeline-chart svg {
+        margin-left: 25px;
+    }
+    
+    .cost-timeline-chart .chart-container {
+        height: 200px !important;
+        padding: 15px !important;
+    }
+    
+    .cost-timeline-chart .badge {
+        font-size: 0.8em !important;
+        margin-bottom: 0.5rem;
+        display: inline-block;
+    }
+    
+    .cost-timeline-chart .table {
+        font-size: 0.75em;
+    }
+}
+
+/* Grid line styling */
+.cost-timeline-chart svg line {
+    transition: opacity 0.3s ease;
+}
+
+.cost-timeline-chart:hover svg line {
+    opacity: 0.8 !important;
+}

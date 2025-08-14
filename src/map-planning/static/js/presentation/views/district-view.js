@@ -297,6 +297,15 @@ async function loadDistrictResults(district) {
         const resultsContainer = document.getElementById(`resultsContent-${district.id}`);
         if (resultsContainer) {
             resultsContainer.innerHTML = resultsHTML;
+            
+            // Load and render cost timeline chart after DOM is updated
+            setTimeout(async () => {
+                try {
+                    await loadCostTimelineChart(district, systemConfig);
+                } catch (chartError) {
+                    console.warn('Could not load cost timeline chart:', chartError);
+                }
+            }, 100);
         }
         
     } catch (error) {
@@ -412,7 +421,7 @@ function generateResultsHTML(results) {
         </div>
         
         <!-- CO2-Kosten -->
-        <div class="row">
+        <div class="row mb-3">
             <div class="col-12">
                 <div class="alert alert-info">
                     <h6><i class="bi bi-calculator"></i> Monetäre CO2-Bewertung</h6>
@@ -427,7 +436,253 @@ function generateResultsHTML(results) {
                 </div>
             </div>
         </div>
+        
+        <!-- Kosten-Zeitverlauf Diagramm -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0"><i class="bi bi-graph-up"></i> Energiekosten im Zeitverlauf</h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="costTimelineChart-${results.district_id}" style="height: 300px;">
+                            <div class="text-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Lade Diagramm...</span>
+                                </div>
+                                <p class="mt-2">Berechne Kostenentwicklung...</p>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle"></i>
+                                Darstellung verschiedener Energiepreis-Szenarien bis 2050.
+                                Basis: Aktuelle Energieverbräuche des Quartiers.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+            </div>
+        </div>
     `;
+}
+
+// Load and render cost timeline chart
+async function loadCostTimelineChart(district, systemConfig) {
+    try {
+        console.log('Loading cost timeline chart for district:', district.name);
+        
+        // Check if chart functions are available
+        if (typeof window.calculateAllScenariosTimeline !== 'function') {
+            throw new Error('Cost timeline calculation functions not available');
+        }
+        
+        // Calculate timeline data for all scenarios
+        const timelineData = window.calculateAllScenariosTimeline(district, systemConfig);
+        
+        // Get chart container
+        const chartContainer = document.getElementById(`costTimelineChart-${district.id}`);
+        if (!chartContainer) {
+            console.warn('Chart container not found for district:', district.id);
+            return;
+        }
+        
+        // Generate chart HTML using simple CSS-based chart
+        const chartHTML = generateCostTimelineHTML(timelineData, district.name);
+        chartContainer.innerHTML = chartHTML;
+        
+        console.log('Cost timeline chart loaded successfully');
+        
+    } catch (error) {
+        console.error('Error loading cost timeline chart:', error);
+        const chartContainer = document.getElementById(`costTimelineChart-${district.id}`);
+        if (chartContainer) {
+            chartContainer.innerHTML = `
+                <div class="alert alert-warning">
+                    <h6>Diagramm nicht verfügbar</h6>
+                    <p>Die Kostenentwicklung konnte nicht dargestellt werden.</p>
+                    <small>${error.message}</small>
+                </div>
+            `;
+        }
+    }
+}
+
+// Generate HTML for cost timeline visualization
+function generateCostTimelineHTML(timelineData, districtName) {
+    const scenarios = Object.keys(timelineData);
+    if (scenarios.length === 0) {
+        return '<p class="text-muted">Keine Szenario-Daten verfügbar</p>';
+    }
+    
+    // Get data from first scenario to establish scale
+    const firstScenario = timelineData[scenarios[0]];
+    if (!firstScenario || !firstScenario.timeline) {
+        return '<p class="text-muted">Ungültige Zeitverlaufsdaten</p>';
+    }
+    
+    const maxCost = Math.max(...scenarios.map(key => 
+        Math.max(...timelineData[key].timeline.map(point => point.total_costs || 0))
+    ));
+    
+    const minCost = Math.min(...scenarios.map(key => 
+        Math.min(...timelineData[key].timeline.map(point => point.total_costs || 0))
+    ));
+    
+    const colors = {
+        'base_case': '#007bff',
+        'high_prices': '#dc3545', 
+        'green_transition': '#28a745'
+    };
+    
+    const scenarioNames = {
+        'base_case': 'Basis-Szenario',
+        'high_prices': 'Hohe Preise',
+        'green_transition': 'Grüne Wende'
+    };
+    
+    const chartHeight = 220;
+    const chartPadding = 20;
+    const usableHeight = chartHeight - (2 * chartPadding);
+    
+    let html = `
+        <div class="cost-timeline-chart">
+            <h6 class="mb-3 text-center">Energiekosten-Entwicklung für ${districtName}</h6>
+            
+            <!-- Legend -->
+            <div class="text-center mb-4">
+                ${scenarios.map(key => `
+                    <span class="badge me-3 px-3 py-2" style="background-color: ${colors[key] || '#6c757d'}; font-size: 0.9em;">
+                        ${scenarioNames[key] || key}
+                    </span>
+                `).join('')}
+            </div>
+            
+            <!-- Chart Area -->
+            <div class="chart-container position-relative border rounded" style="height: 280px; background: linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%); padding: 20px;">
+                <!-- Y-Axis Labels -->
+                <div class="position-absolute" style="left: 5px; top: 25px; font-size: 0.75em; color: #495057; font-weight: 500;">
+                    ${formatNumber(maxCost, 0)} €
+                </div>
+                <div class="position-absolute" style="left: 5px; top: 50%; font-size: 0.75em; color: #495057; font-weight: 500;">
+                    ${formatNumber((maxCost + minCost) / 2, 0)} €
+                </div>
+                <div class="position-absolute" style="left: 5px; bottom: 50px; font-size: 0.75em; color: #495057; font-weight: 500;">
+                    ${formatNumber(minCost, 0)} €
+                </div>
+                
+                <!-- Chart Lines -->
+                <svg width="100%" height="${chartHeight}" style="margin-left: 45px; margin-top: 10px;">
+                    <!-- Grid lines -->
+                    ${[0, 0.25, 0.5, 0.75, 1].map(ratio => `
+                        <line x1="20" y1="${chartPadding + (ratio * usableHeight)}" 
+                              x2="580" y2="${chartPadding + (ratio * usableHeight)}" 
+                              stroke="#e9ecef" stroke-width="1" stroke-dasharray="2,2"/>
+                    `).join('')}
+                    
+                    ${scenarios.map(scenarioKey => {
+                        const data = timelineData[scenarioKey];
+                        const points = data.timeline.map((point, index) => {
+                            const x = 30 + (index * 110); // Better spacing
+                            const y = chartPadding + (1 - ((point.total_costs - minCost) / (maxCost - minCost))) * usableHeight;
+                            return `${x},${y}`;
+                        }).join(' ');
+                        
+                        return `
+                            <polyline 
+                                fill="none" 
+                                stroke="${colors[scenarioKey] || '#6c757d'}" 
+                                stroke-width="3" 
+                                points="${points}"
+                                style="filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.1));"
+                            />
+                            ${data.timeline.map((point, index) => {
+                                const x = 30 + (index * 110);
+                                const y = chartPadding + (1 - ((point.total_costs - minCost) / (maxCost - minCost))) * usableHeight;
+                                return `
+                                    <circle cx="${x}" cy="${y}" r="4" fill="${colors[scenarioKey] || '#6c757d'}" 
+                                            style="filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.1));">
+                                        <title>${scenarioNames[scenarioKey]}: ${formatNumber(point.total_costs, 0)} € (${point.year})</title>
+                                    </circle>
+                                `;
+                            }).join('')}
+                        `;
+                    }).join('')}
+                </svg>
+                
+                <!-- X-Axis Labels -->
+                <div class="d-flex justify-content-between position-absolute bottom-0 w-100" style="margin-left: 45px; padding-right: 45px; margin-bottom: 10px;">
+                    ${firstScenario.timeline.map(point => 
+                        `<span class="text-muted fw-bold" style="font-size: 0.85em;">${point.year}</span>`
+                    ).join('')}
+                </div>
+            </div>
+            
+            <!-- Scenario Comparison -->
+            <div class="row mt-4">
+                <div class="col-md-4">
+                    <div class="text-center p-3 bg-light rounded border">
+                        <small class="text-muted d-block">2025 → 2050</small>
+                        <div class="fw-bold text-primary">${scenarioNames['base_case']}</div>
+                        <div class="fs-6">${formatNumber(timelineData['base_case'].timeline[0].total_costs, 0)} € → ${formatNumber(timelineData['base_case'].timeline[timelineData['base_case'].timeline.length-1].total_costs, 0)} €</div>
+                        <small class="text-success">+${Math.round(((timelineData['base_case'].timeline[timelineData['base_case'].timeline.length-1].total_costs / timelineData['base_case'].timeline[0].total_costs - 1) * 100))}%</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center p-3 bg-light rounded border">
+                        <small class="text-muted d-block">2025 → 2050</small>
+                        <div class="fw-bold text-danger">${scenarioNames['high_prices']}</div>
+                        <div class="fs-6">${formatNumber(timelineData['high_prices'].timeline[0].total_costs, 0)} € → ${formatNumber(timelineData['high_prices'].timeline[timelineData['high_prices'].timeline.length-1].total_costs, 0)} €</div>
+                        <small class="text-danger">+${Math.round(((timelineData['high_prices'].timeline[timelineData['high_prices'].timeline.length-1].total_costs / timelineData['high_prices'].timeline[0].total_costs - 1) * 100))}%</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center p-3 bg-light rounded border">
+                        <small class="text-muted d-block">2025 → 2050</small>
+                        <div class="fw-bold text-success">${scenarioNames['green_transition']}</div>
+                        <div class="fs-6">${formatNumber(timelineData['green_transition'].timeline[0].total_costs, 0)} € → ${formatNumber(timelineData['green_transition'].timeline[timelineData['green_transition'].timeline.length-1].total_costs, 0)} €</div>
+                        <small class="text-success">+${Math.round(((timelineData['green_transition'].timeline[timelineData['green_transition'].timeline.length-1].total_costs / timelineData['green_transition'].timeline[0].total_costs - 1) * 100))}%</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Data Table -->
+            <div class="mt-4">
+                <h6 class="text-muted mb-3">Detaillierte Kostenentwicklung</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="fw-bold">Jahr</th>
+                                ${scenarios.map(key => `<th class="fw-bold text-center">${scenarioNames[key] || key}</th>`).join('')}
+                                <th class="fw-bold text-center text-muted">Unterschied Hoch vs. Basis</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${firstScenario.timeline.map((_, index) => {
+                                const baseCost = timelineData['base_case'].timeline[index].total_costs;
+                                const highCost = timelineData['high_prices'].timeline[index].total_costs;
+                                const difference = highCost - baseCost;
+                                const percentDiff = Math.round(((highCost / baseCost - 1) * 100));
+                                return `
+                                <tr>
+                                    <td class="fw-bold">${firstScenario.timeline[index].year}</td>
+                                    ${scenarios.map(key => `
+                                        <td class="text-center" style="color: ${colors[key]}">${formatNumber(timelineData[key].timeline[index].total_costs, 0)} €</td>
+                                    `).join('')}
+                                    <td class="text-center text-muted">+${formatNumber(difference, 0)} € (+${percentDiff}%)</td>
+                                </tr>
+                            `}).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    return html;
 }
 
 // Export to global scope

@@ -255,6 +255,34 @@ async function createAllDistrictsContent() {
                 </div>
             </div>
             
+            <!-- Aggregierte Kosten-Zeitverlauf -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="mb-0"><i class="bi bi-graph-up"></i> Gesamtkosten-Entwicklung bis 2050</h6>
+                        </div>
+                        <div class="card-body">
+                            <div id="aggregateCostTimelineChart" style="min-height: 350px;">
+                                <div class="text-center">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Lade aggregiertes Diagramm...</span>
+                                    </div>
+                                    <p class="mt-2">Berechne Gesamtkosten-Entwicklung für alle Quartiere...</p>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    <i class="bi bi-info-circle"></i>
+                                    Aggregierte Energiekosten aller ${districts.length} Quartiere in verschiedenen Szenarien.
+                                    Zeigt die Auswirkungen unterschiedlicher Energiepreis-Entwicklungen auf die Gesamtstadt.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Detailanalyse Button und Quartiers-Übersicht -->
             <div class="row mb-4">
                 <div class="col-12">
@@ -328,6 +356,15 @@ async function createAllDistrictsContent() {
                 }
             }
         }, 200);
+        
+        // Load aggregate cost timeline chart
+        setTimeout(async () => {
+            try {
+                await loadAggregateCostTimelineChart(districts);
+            } catch (error) {
+                console.warn('Could not load aggregate cost timeline chart:', error);
+            }
+        }, 400);
         
         return content;
         
@@ -529,6 +566,330 @@ function generateTotalResultsHTML(results) {
             </small>
         </div>
     `;
+}
+
+// Load and render aggregate cost timeline chart for all districts
+async function loadAggregateCostTimelineChart(districts) {
+    try {
+        console.log('Loading aggregate cost timeline chart for all districts...');
+        
+        // Get system config
+        let systemConfig;
+        try {
+            if (typeof window.ConfigData !== 'undefined' && window.ConfigData.getSystemConfig) {
+                systemConfig = await window.ConfigData.getSystemConfig();
+            } else if (typeof window.apiClient !== 'undefined' && window.apiClient.getSystemConfig) {
+                systemConfig = await window.apiClient.getSystemConfig();
+            } else {
+                const response = await fetch('/api/system-config');
+                if (response.ok) {
+                    systemConfig = await response.json();
+                } else {
+                    throw new Error('System config API not available');
+                }
+            }
+        } catch (configError) {
+            console.warn('Using fallback config for aggregate timeline:', configError);
+            systemConfig = {
+                energy_scenarios: {
+                    base_case: {
+                        electricity_prices: { 2025: 0.32, 2030: 0.35, 2040: 0.40, 2050: 0.45 },
+                        gas_prices: { 2025: 0.08, 2030: 0.10, 2040: 0.15, 2050: 0.20 },
+                        heat_prices: { 2025: 0.09, 2030: 0.11, 2040: 0.14, 2050: 0.18 }
+                    },
+                    high_prices: {
+                        electricity_prices: { 2025: 0.38, 2030: 0.45, 2040: 0.55, 2050: 0.65 },
+                        gas_prices: { 2025: 0.12, 2030: 0.18, 2040: 0.25, 2050: 0.35 },
+                        heat_prices: { 2025: 0.13, 2030: 0.18, 2040: 0.22, 2050: 0.28 }
+                    },
+                    green_transition: {
+                        electricity_prices: { 2025: 0.30, 2030: 0.28, 2040: 0.25, 2050: 0.22 },
+                        gas_prices: { 2025: 0.10, 2030: 0.15, 2040: 0.25, 2050: 0.40 },
+                        heat_prices: { 2025: 0.10, 2030: 0.12, 2040: 0.15, 2050: 0.18 }
+                    }
+                }
+            };
+        }
+        
+        // Check if timeline functions are available
+        if (typeof window.calculateCostTimeline !== 'function') {
+            throw new Error('Cost timeline calculation functions not available');
+        }
+        
+        // Calculate aggregate timeline for all scenarios
+        const scenarios = ['base_case', 'high_prices', 'green_transition'];
+        const aggregateData = {};
+        
+        scenarios.forEach(scenarioKey => {
+            const scenarioTimeline = [];
+            const years = [2025, 2030, 2035, 2040, 2045, 2050];
+            
+            years.forEach(year => {
+                let totalCostsForYear = 0;
+                
+                // Sum costs from all districts for this year and scenario
+                districts.forEach(district => {
+                    try {
+                        const districtTimeline = window.calculateCostTimeline(district, systemConfig, scenarioKey);
+                        const yearData = districtTimeline.timeline.find(point => point.year === year);
+                        if (yearData) {
+                            totalCostsForYear += yearData.total_costs || 0;
+                        }
+                    } catch (districtError) {
+                        console.warn(`Error calculating timeline for district ${district.name}:`, districtError);
+                    }
+                });
+                
+                scenarioTimeline.push({
+                    year: year,
+                    total_costs: totalCostsForYear
+                });
+            });
+            
+            aggregateData[scenarioKey] = {
+                scenario_name: getScenarioDisplayName(scenarioKey),
+                timeline: scenarioTimeline
+            };
+        });
+        
+        // Generate chart HTML
+        const chartHTML = generateAggregateCostTimelineHTML(aggregateData, districts.length);
+        
+        // Update chart container
+        const chartContainer = document.getElementById('aggregateCostTimelineChart');
+        if (chartContainer) {
+            chartContainer.innerHTML = chartHTML;
+        }
+        
+        console.log('Aggregate cost timeline chart loaded successfully');
+        
+    } catch (error) {
+        console.error('Error loading aggregate cost timeline chart:', error);
+        const chartContainer = document.getElementById('aggregateCostTimelineChart');
+        if (chartContainer) {
+            chartContainer.innerHTML = `
+                <div class="alert alert-warning">
+                    <h6>Diagramm nicht verfügbar</h6>
+                    <p>Die aggregierte Kostenentwicklung konnte nicht dargestellt werden.</p>
+                    <small>${error.message}</small>
+                </div>
+            `;
+        }
+    }
+}
+
+// Helper function to get display names for scenarios
+function getScenarioDisplayName(scenarioKey) {
+    const names = {
+        'base_case': 'Basis-Szenario',
+        'high_prices': 'Hohe Energiepreise',
+        'green_transition': 'Grüne Energiewende'
+    };
+    return names[scenarioKey] || scenarioKey;
+}
+
+// Generate HTML for aggregate cost timeline visualization
+function generateAggregateCostTimelineHTML(aggregateData, districtCount) {
+    const scenarios = Object.keys(aggregateData);
+    if (scenarios.length === 0) {
+        return '<p class="text-muted">Keine aggregierten Daten verfügbar</p>';
+    }
+    
+    // Get maximum and minimum costs for better scaling
+    const maxCost = Math.max(...scenarios.map(key => 
+        Math.max(...aggregateData[key].timeline.map(point => point.total_costs || 0))
+    ));
+    
+    const minCost = Math.min(...scenarios.map(key => 
+        Math.min(...aggregateData[key].timeline.map(point => point.total_costs || 0))
+    ));
+    
+    const colors = {
+        'base_case': '#007bff',
+        'high_prices': '#dc3545', 
+        'green_transition': '#28a745'
+    };
+    
+    const firstScenario = aggregateData[scenarios[0]];
+    const chartHeight = 280;
+    const chartPadding = 25;
+    const usableHeight = chartHeight - (2 * chartPadding);
+    
+    let html = `
+        <div class="cost-timeline-chart">
+            <h5 class="mb-4 text-center text-primary">Gesamtkosten-Entwicklung aller ${districtCount} Quartiere</h5>
+            
+            <!-- Legend with better styling -->
+            <div class="text-center mb-4">
+                ${scenarios.map(key => `
+                    <span class="badge me-3 px-4 py-2" style="background-color: ${colors[key] || '#6c757d'}; font-size: 1em;">
+                        <i class="bi bi-circle-fill me-1"></i>${aggregateData[key].scenario_name}
+                    </span>
+                `).join('')}
+            </div>
+            
+            <!-- Chart Area with improved design -->
+            <div class="chart-container position-relative border rounded shadow-sm" style="height: 350px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 25px;">
+                <!-- Y-Axis Labels with better positioning -->
+                <div class="position-absolute" style="left: 8px; top: 30px; font-size: 0.8em; color: #495057; font-weight: 600;">
+                    ${formatNumber(maxCost / 1000, 0)}k €
+                </div>
+                <div class="position-absolute" style="left: 8px; top: 45%; font-size: 0.8em; color: #495057; font-weight: 600;">
+                    ${formatNumber(((maxCost + minCost) / 2) / 1000, 0)}k €
+                </div>
+                <div class="position-absolute" style="left: 8px; bottom: 60px; font-size: 0.8em; color: #495057; font-weight: 600;">
+                    ${formatNumber(minCost / 1000, 0)}k €
+                </div>
+                
+                <!-- Chart Lines with improved SVG -->
+                <svg width="100%" height="${chartHeight}" style="margin-left: 50px; margin-top: 15px;">
+                    <!-- Grid lines for better readability -->
+                    ${[0, 0.2, 0.4, 0.6, 0.8, 1].map(ratio => `
+                        <line x1="25" y1="${chartPadding + (ratio * usableHeight)}" 
+                              x2="650" y2="${chartPadding + (ratio * usableHeight)}" 
+                              stroke="#dee2e6" stroke-width="1" stroke-dasharray="3,3" opacity="0.7"/>
+                    `).join('')}
+                    
+                    <!-- Vertical grid lines -->
+                    ${firstScenario.timeline.map((_, index) => {
+                        const x = 40 + (index * 120);
+                        return `
+                            <line x1="${x}" y1="${chartPadding}" 
+                                  x2="${x}" y2="${chartPadding + usableHeight}" 
+                                  stroke="#dee2e6" stroke-width="1" stroke-dasharray="2,2" opacity="0.5"/>
+                        `;
+                    }).join('')}
+                    
+                    ${scenarios.map(scenarioKey => {
+                        const data = aggregateData[scenarioKey];
+                        const points = data.timeline.map((point, index) => {
+                            const x = 40 + (index * 120);
+                            const y = chartPadding + (1 - ((point.total_costs - minCost) / (maxCost - minCost))) * usableHeight;
+                            return `${x},${y}`;
+                        }).join(' ');
+                        
+                        return `
+                            <!-- Line with gradient effect -->
+                            <polyline 
+                                fill="none" 
+                                stroke="${colors[scenarioKey] || '#6c757d'}" 
+                                stroke-width="4" 
+                                points="${points}"
+                                style="filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.15));"
+                            />
+                            <!-- Data points with enhanced styling -->
+                            ${data.timeline.map((point, index) => {
+                                const x = 40 + (index * 120);
+                                const y = chartPadding + (1 - ((point.total_costs - minCost) / (maxCost - minCost))) * usableHeight;
+                                return `
+                                    <circle cx="${x}" cy="${y}" r="6" fill="white" stroke="${colors[scenarioKey] || '#6c757d'}" stroke-width="3"
+                                            style="filter: drop-shadow(1px 1px 3px rgba(0,0,0,0.2));">
+                                        <title>${aggregateData[scenarioKey].scenario_name}: ${formatNumber(point.total_costs, 0)} € (${point.year})</title>
+                                    </circle>
+                                    <circle cx="${x}" cy="${y}" r="3" fill="${colors[scenarioKey] || '#6c757d'}"/>
+                                `;
+                            }).join('')}
+                        `;
+                    }).join('')}
+                </svg>
+                
+                <!-- X-Axis Labels with improved styling -->
+                <div class="d-flex justify-content-between position-absolute bottom-0 w-100" style="margin-left: 50px; padding-right: 50px; margin-bottom: 15px;">
+                    ${firstScenario.timeline.map(point => 
+                        `<span class="text-dark fw-bold border rounded px-2 py-1 bg-white shadow-sm" style="font-size: 0.9em;">${point.year}</span>`
+                    ).join('')}
+                </div>
+            </div>
+            
+            <!-- Enhanced Summary Statistics -->
+            <div class="row mt-4 g-3">
+                <div class="col-md-3">
+                    <div class="text-center p-3 bg-primary text-white rounded shadow">
+                        <small class="d-block opacity-75">Aktuell (2025)</small>
+                        <div class="fw-bold fs-5">${formatNumber(firstScenario.timeline[0].total_costs, 0)} €</div>
+                        <small class="opacity-75">Alle Quartiere</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center p-3 bg-success text-white rounded shadow">
+                        <small class="d-block opacity-75">Basis-Prognose 2050</small>
+                        <div class="fw-bold fs-5">${formatNumber(aggregateData.base_case.timeline[aggregateData.base_case.timeline.length-1].total_costs, 0)} €</div>
+                        <small class="opacity-75">+${Math.round(((aggregateData.base_case.timeline[aggregateData.base_case.timeline.length-1].total_costs / firstScenario.timeline[0].total_costs - 1) * 100))}% vs. 2025</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center p-3 bg-danger text-white rounded shadow">
+                        <small class="d-block opacity-75">Hohe Preise 2050</small>
+                        <div class="fw-bold fs-5">${formatNumber(aggregateData.high_prices.timeline[aggregateData.high_prices.timeline.length-1].total_costs, 0)} €</div>
+                        <small class="opacity-75">+${Math.round(((aggregateData.high_prices.timeline[aggregateData.high_prices.timeline.length-1].total_costs / firstScenario.timeline[0].total_costs - 1) * 100))}% vs. 2025</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center p-3 bg-info text-white rounded shadow">
+                        <small class="d-block opacity-75">Pro Quartier (Ø)</small>
+                        <div class="fw-bold fs-5">${formatNumber(firstScenario.timeline[0].total_costs / districtCount, 0)} €</div>
+                        <small class="opacity-75">Aktuell (2025)</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Cost Impact Analysis -->
+            <div class="mt-4">
+                <div class="alert alert-info">
+                    <h6 class="mb-2"><i class="bi bi-info-circle"></i> Szenario-Auswirkungen</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <small class="text-muted d-block">Zusätzliche Kosten bei hohen Preisen (2050):</small>
+                            <span class="fw-bold text-danger fs-6">+${formatNumber(aggregateData.high_prices.timeline[aggregateData.high_prices.timeline.length-1].total_costs - aggregateData.base_case.timeline[aggregateData.base_case.timeline.length-1].total_costs, 0)} €</span>
+                            <small class="text-muted"> vs. Basis-Szenario</small>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted d-block">Einsparungen bei grüner Wende (2050):</small>
+                            <span class="fw-bold text-success fs-6">${formatNumber(aggregateData.base_case.timeline[aggregateData.base_case.timeline.length-1].total_costs - aggregateData.green_transition.timeline[aggregateData.green_transition.timeline.length-1].total_costs, 0)} €</span>
+                            <small class="text-muted"> vs. Basis-Szenario</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Data Table with enhanced design -->
+            <div class="mt-4">
+                <h6 class="text-muted mb-3"><i class="bi bi-table"></i> Detaillierte Kostenvergleich</h6>
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="fw-bold">Jahr</th>
+                                ${scenarios.map(key => `<th class="fw-bold text-center">${aggregateData[key].scenario_name}</th>`).join('')}
+                                <th class="fw-bold text-center">Differenz Hoch vs. Basis</th>
+                                <th class="fw-bold text-center">Einsparung Grün vs. Basis</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${firstScenario.timeline.map((_, index) => {
+                                const baseCost = aggregateData.base_case ? aggregateData.base_case.timeline[index].total_costs : 0;
+                                const highCost = aggregateData.high_prices ? aggregateData.high_prices.timeline[index].total_costs : 0;
+                                const greenCost = aggregateData.green_transition ? aggregateData.green_transition.timeline[index].total_costs : 0;
+                                const highDifference = highCost - baseCost;
+                                const greenSaving = baseCost - greenCost;
+                                return `
+                                <tr>
+                                    <td class="fw-bold fs-6">${firstScenario.timeline[index].year}</td>
+                                    ${scenarios.map(key => `
+                                        <td class="text-center fw-bold" style="color: ${colors[key]}">${formatNumber(aggregateData[key].timeline[index].total_costs, 0)} €</td>
+                                    `).join('')}
+                                    <td class="text-center text-danger fw-bold">+${formatNumber(highDifference, 0)} €</td>
+                                    <td class="text-center text-success fw-bold">-${formatNumber(greenSaving, 0)} €</td>
+                                </tr>
+                            `}).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    return html;
 }
 
 // Export to global scope

@@ -198,8 +198,103 @@ function calculateDistrictResults(district, systemConfig) {
     };
 }
 
+// Berechne Kosten-Zeitverlauf für ein Quartier über mehrere Jahre
+function calculateCostTimeline(district, systemConfig, scenarioKey = 'base_case') {
+    const parsedDistrict = parseDistrictData(district);
+    const energyDemand = parsedDistrict.energy_demand;
+    
+    console.log(`Calculating cost timeline for scenario: ${scenarioKey}`, systemConfig);
+    
+    // Get the specified scenario or fallback
+    let scenario;
+    if (systemConfig && systemConfig.energy_scenarios && systemConfig.energy_scenarios[scenarioKey]) {
+        scenario = systemConfig.energy_scenarios[scenarioKey];
+        console.log(`Using system config scenario ${scenarioKey}:`, scenario);
+    } else {
+        console.warn(`Scenario ${scenarioKey} not found in system config, using specific fallback for ${scenarioKey}`);
+        // Scenario-specific fallbacks based on system_config.yml
+        const fallbackScenarios = {
+            'base_case': {
+                name: "Basis-Szenario 2025",
+                electricity_prices: { 2025: 0.32, 2030: 0.35, 2040: 0.40, 2050: 0.45 },
+                gas_prices: { 2025: 0.08, 2030: 0.10, 2040: 0.15, 2050: 0.20 },
+                heat_prices: { 2025: 0.09, 2030: 0.11, 2040: 0.14, 2050: 0.18 }
+            },
+            'high_prices': {
+                name: "Hohe Energiepreise",
+                electricity_prices: { 2025: 0.38, 2030: 0.45, 2040: 0.55, 2050: 0.65 },
+                gas_prices: { 2025: 0.12, 2030: 0.18, 2040: 0.25, 2050: 0.35 },
+                heat_prices: { 2025: 0.13, 2030: 0.18, 2040: 0.22, 2050: 0.28 }
+            },
+            'green_transition': {
+                name: "Grüne Energiewende",
+                electricity_prices: { 2025: 0.30, 2030: 0.28, 2040: 0.25, 2050: 0.22 },
+                gas_prices: { 2025: 0.10, 2030: 0.15, 2040: 0.25, 2050: 0.40 },
+                heat_prices: { 2025: 0.10, 2030: 0.12, 2040: 0.15, 2050: 0.18 }
+            }
+        };
+        scenario = fallbackScenarios[scenarioKey] || fallbackScenarios['base_case'];
+    }
+    
+    // Extract years and calculate costs for each year
+    const years = [2025, 2030, 2035, 2040, 2045, 2050];
+    const timeline = [];
+    
+    years.forEach(year => {
+        // Interpolate prices for the year
+        const electricityPrice = interpolatePrice(scenario.electricity_prices, year) || 0.32;
+        const gasPrice = interpolatePrice(scenario.gas_prices, year) || 0.08;
+        const heatPrice = interpolatePrice(scenario.heat_prices, year) || 0.09;
+        
+        // Calculate annual costs for this year
+        const electricityCostTotal = (energyDemand.electricity_mwh || 0) * 1000 * electricityPrice;
+        const heatingCostGas = (energyDemand.heating_mwh || 0) * 1000 * gasPrice;
+        const coolingCostElectricity = (energyDemand.cooling_mwh || 0) * 1000 * electricityPrice;
+        const transportCostElectricity = (energyDemand.transport_mwh || 0) * 1000 * electricityPrice;
+        
+        const totalYearCosts = electricityCostTotal + heatingCostGas + coolingCostElectricity + transportCostElectricity;
+        
+        timeline.push({
+            year: year,
+            total_costs: totalYearCosts,
+            electricity_costs: electricityCostTotal,
+            heating_costs: heatingCostGas,
+            cooling_costs: coolingCostElectricity,
+            transport_costs: transportCostElectricity,
+            electricity_price: electricityPrice,
+            gas_price: gasPrice,
+            heat_price: heatPrice
+        });
+    });
+    
+    return {
+        scenario_name: scenario.name || `${scenarioKey} Szenario`,
+        scenario_description: scenario.description || `Energiekosten-Verlauf für ${scenarioKey}`,
+        district_name: district.name,
+        timeline: timeline
+    };
+}
+
+// Berechne Zeitverlauf für alle verfügbaren Szenarien
+function calculateAllScenariosTimeline(district, systemConfig) {
+    const scenarios = ['base_case', 'high_prices', 'green_transition'];
+    const results = {};
+    
+    scenarios.forEach(scenarioKey => {
+        try {
+            results[scenarioKey] = calculateCostTimeline(district, systemConfig, scenarioKey);
+        } catch (error) {
+            console.warn(`Error calculating timeline for scenario ${scenarioKey}:`, error);
+        }
+    });
+    
+    return results;
+}
+
 // Export to global scope
 window.calculateAnnualEnergyCosts = calculateAnnualEnergyCosts;
 window.calculateCO2Emissions = calculateCO2Emissions;
 window.calculateDistrictResults = calculateDistrictResults;
+window.calculateCostTimeline = calculateCostTimeline;
+window.calculateAllScenariosTimeline = calculateAllScenariosTimeline;
 window.interpolatePrice = interpolatePrice;
