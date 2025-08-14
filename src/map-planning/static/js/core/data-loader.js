@@ -30,7 +30,22 @@ async function loadEnergyMetrics() {
     try {
         Logger.info('Loading energy metrics...');
         const data = await apiClient.getEnergyBalance();
-        displayTotalOverview(data);
+        
+        // Use new overview template instead of old displayTotalOverview
+        if (typeof createAllDistrictsContent === 'function') {
+            const overviewContent = await createAllDistrictsContent();
+            const overviewContainer = document.getElementById('totalOverviewContent');
+            if (overviewContainer) {
+                overviewContainer.innerHTML = overviewContent;
+                Logger.info('New overview template loaded and displayed');
+            }
+        } else {
+            Logger.warn('createAllDistrictsContent function not available, falling back to old method');
+            if (typeof displayTotalOverview === 'function') {
+                displayTotalOverview(data);
+            }
+        }
+        
         Logger.info('Energy metrics loaded and displayed');
         return data;
     } catch (error) {

@@ -83,12 +83,38 @@ async function showOverview() {
                 console.log('Data reloaded');
             }
             
-            // Load overview data using the existing overview-view functions
+            // Load overview data using the existing overview-templates functions
             if (typeof createAllDistrictsContent === 'function') {
-                const overviewContent = await createAllDistrictsContent();
+                try {
+                    const overviewContent = await createAllDistrictsContent();
+                    const overviewContainer = document.getElementById('totalOverviewContent');
+                    if (overviewContainer) {
+                        overviewContainer.innerHTML = overviewContent;
+                        console.log('Overview content loaded successfully');
+                    }
+                } catch (error) {
+                    console.error('Error loading overview content:', error);
+                    const overviewContainer = document.getElementById('totalOverviewContent');
+                    if (overviewContainer) {
+                        overviewContainer.innerHTML = `
+                            <div class="alert alert-danger">
+                                <h6>Fehler beim Laden</h6>
+                                <p>Die Gesamtübersicht konnte nicht geladen werden.</p>
+                                <small>Error: ${error.message}</small>
+                            </div>
+                        `;
+                    }
+                }
+            } else {
+                console.error('createAllDistrictsContent function not found');
                 const overviewContainer = document.getElementById('totalOverviewContent');
                 if (overviewContainer) {
-                    overviewContainer.innerHTML = overviewContent;
+                    overviewContainer.innerHTML = `
+                        <div class="alert alert-warning">
+                            <h6>Funktion nicht verfügbar</h6>
+                            <p>Die createAllDistrictsContent Funktion wurde nicht gefunden.</p>
+                        </div>
+                    `;
                 }
             }
             
