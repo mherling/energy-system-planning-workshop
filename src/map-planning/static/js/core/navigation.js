@@ -82,6 +82,22 @@ async function showOverview() {
                 await loadData();
                 console.log('Data reloaded');
             }
+            
+            // Load overview data using the existing overview-view functions
+            if (typeof createAllDistrictsContent === 'function') {
+                const overviewContent = await createAllDistrictsContent();
+                const overviewContainer = document.getElementById('totalOverviewContent');
+                if (overviewContainer) {
+                    overviewContainer.innerHTML = overviewContent;
+                }
+            }
+            
+            // If there's a current district, redisplay its details
+            const current = getCurrentDistrict ? getCurrentDistrict() : window.currentDistrict;
+            if (current && typeof displayDistrictDetails === 'function') {
+                displayDistrictDetails(current);
+            }
+            
         } catch (error) {
             console.error('Error reinitializing application:', error);
         }
@@ -97,7 +113,12 @@ async function showOverview() {
         }
     }
     
-    currentDistrict = null;
+    // Reset current district
+    if (typeof setCurrentDistrict === 'function') {
+        setCurrentDistrict(null);
+    } else {
+        window.currentDistrict = null;
+    }
 }
 
 // Utility function to show toast notifications
