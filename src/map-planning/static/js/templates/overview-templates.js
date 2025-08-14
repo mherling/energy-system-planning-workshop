@@ -51,7 +51,7 @@ async function createAllDistrictsContent() {
         const currentBiomass = totalBiomass * 0.80;
         totalCurrentGeneration = currentSolarPV + currentSolarThermal + currentBiomass;
         
-        return `
+        const content = `
             <!-- Basic Info Row - analog zu district-view.js -->
             <div class="row mb-4">
                 <div class="col-4">
@@ -236,6 +236,25 @@ async function createAllDistrictsContent() {
                 </div>
             </div>
             
+            <!-- Resultierende Ergebnisse - Kosten & CO2 (Gesamt) -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="mb-0"><i class="bi bi-calculator"></i> Resultierende Ergebnisse (Gesamt)</h6>
+                        </div>
+                        <div class="card-body" id="totalResultsContent">
+                            <div class="text-center">
+                                <div class="spinner-border text-info" role="status">
+                                    <span class="visually-hidden">Berechne Gesamt-Ergebnisse...</span>
+                                </div>
+                                <p class="mt-2">Kosten und CO2-Bilanz für alle Quartiere werden berechnet...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Detailanalyse Button und Quartiers-Übersicht -->
             <div class="row mb-4">
                 <div class="col-12">
@@ -291,15 +310,225 @@ async function createAllDistrictsContent() {
             </div>
         `;
         
+        // Load total results asynchronously after UI is rendered
+        setTimeout(async () => {
+            try {
+                await loadTotalResults(districts);
+            } catch (error) {
+                console.error('Error loading total results:', error);
+                const resultsContainer = document.getElementById('totalResultsContent');
+                if (resultsContainer) {
+                    resultsContainer.innerHTML = `
+                        <div class="alert alert-warning">
+                            <h6>Fehler bei der Berechnung</h6>
+                            <p>Die Gesamt-Kosten- und CO2-Berechnung konnte nicht durchgeführt werden.</p>
+                            <small>${error.message}</small>
+                        </div>
+                    `;
+                }
+            }
+        }, 200);
+        
+        return content;
+        
     } catch (error) {
         console.error('Error creating all districts content:', error);
         return `
             <div class="alert alert-danger">
                 <h6>Fehler beim Laden der Daten</h6>
                 <p>Die Gesamtübersicht konnte nicht geladen werden.</p>
+                <small class="text-muted">${error.message}</small>
             </div>
         `;
     }
+}
+
+// Function to load total results for all districts
+async function loadTotalResults(districts) {
+    try {
+        console.log('Loading total results for all districts...');
+        
+        // Get system config for economic calculations - with fallback methods
+        let systemConfig;
+        try {
+            // First try to use the ConfigData class (which is working in district-view)
+            if (typeof window.ConfigData !== 'undefined' && window.ConfigData.getSystemConfig) {
+                systemConfig = await window.ConfigData.getSystemConfig();
+            } else if (typeof window.apiClient !== 'undefined' && window.apiClient.getSystemConfig) {
+                systemConfig = await window.apiClient.getSystemConfig();
+            } else {
+                // Fallback: try direct API call
+                const response = await fetch('/api/system-config');
+                if (response.ok) {
+                    systemConfig = await response.json();
+                } else {
+                    throw new Error('System config API not available');
+                }
+            }
+        } catch (configError) {
+            console.warn('Could not load system config, using fallback values:', configError);
+            // Use fallback configuration similar to economic-analysis.js
+            systemConfig = {
+                energy_scenarios: {
+                    scenario_1: {
+                        electricity_price_eur_mwh: 280,
+                        heating_price_eur_mwh: 120,
+                        transport_price_eur_mwh: 150
+                    }
+                },
+                emission_factors: {
+                    electricity_kg_co2_mwh: 420,
+                    heating_kg_co2_mwh: 250,
+                    transport_kg_co2_mwh: 280
+                },
+                social_cost_carbon_eur_per_tonne: 195
+            };
+        }
+        
+        // Calculate aggregate results for all districts
+        let totalEnergyCosts = 0;
+        let totalCO2Emissions = 0;
+        let totalSocialCost = 0;
+        let totalEESavings = 0;
+        let totalNetBenefit = 0;
+        
+        // Check if economic analysis functions are available
+        if (typeof window.calculateAnnualEnergyCosts === 'undefined' || 
+            typeof window.calculateCO2Emissions === 'undefined' || 
+            typeof window.calculateDistrictResults === 'undefined' ||
+            typeof window.parseDistrictData === 'undefined') {
+            throw new Error('Economic analysis functions not available. Required: calculateAnnualEnergyCosts, calculateCO2Emissions, calculateDistrictResults, parseDistrictData');
+        }
+        
+        // Process each district
+        for (const district of districts) {
+            try {
+                // Parse district data for economic calculations
+                const districtData = window.parseDistrictData(district);
+                
+                // Calculate economic results
+                const annualCosts = window.calculateAnnualEnergyCosts(districtData, systemConfig);
+                const co2Results = window.calculateCO2Emissions(districtData, systemConfig);
+                const districtResults = window.calculateDistrictResults(districtData, systemConfig);
+                
+                // Aggregate the results - using correct property names
+                totalEnergyCosts += annualCosts.total_costs || 0;
+                totalCO2Emissions += co2Results.total_emissions_tons || 0;
+                totalSocialCost += districtResults.co2_costs || 0;
+                totalEESavings += annualCosts.renewable_savings || 0;
+                totalNetBenefit += (annualCosts.renewable_savings || 0) - (districtResults.co2_costs || 0);
+                
+                console.log(`District ${district.name} results:`, {
+                    costs: annualCosts.total_costs,
+                    co2_tons: co2Results.total_emissions_tons,
+                    social_cost: districtResults.co2_costs,
+                    ee_savings: annualCosts.renewable_savings
+                });
+                
+            } catch (districtError) {
+                console.warn(`Error calculating results for district ${district.name}:`, districtError);
+                // Continue with other districts
+            }
+        }
+        
+        // Generate the total results HTML
+        const totalResultsHTML = generateTotalResultsHTML({
+            totalEnergyCosts,
+            totalCO2Emissions,
+            totalSocialCost,
+            totalEESavings,
+            totalNetBenefit,
+            districtsCount: districts.length
+        });
+        
+        // Update the UI
+        const resultsContainer = document.getElementById('totalResultsContent');
+        if (resultsContainer) {
+            resultsContainer.innerHTML = totalResultsHTML;
+        }
+        
+        console.log('Total results loaded successfully');
+        
+    } catch (error) {
+        console.error('Error in loadTotalResults:', error);
+        throw error;
+    }
+}
+
+// Function to generate HTML for total results display
+function generateTotalResultsHTML(results) {
+    const {
+        totalEnergyCosts,
+        totalCO2Emissions,
+        totalSocialCost,
+        totalEESavings,
+        totalNetBenefit,
+        districtsCount
+    } = results;
+    
+    return `
+        <div class="row text-center mb-3">
+            <div class="col-md-6">
+                <div class="p-3 bg-light rounded">
+                    <h6 class="text-muted mb-1">Jährliche Energiekosten (Gesamt)</h6>
+                    <h4 class="text-danger mb-0">${formatNumber(totalEnergyCosts, 0)} €</h4>
+                    <small class="text-muted">Alle ${districtsCount} Quartiere</small>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="p-3 bg-light rounded">
+                    <h6 class="text-muted mb-1">CO2-Emissionen (Gesamt)</h6>
+                    <h4 class="text-warning mb-0">${formatNumber(totalCO2Emissions, 0)} t CO2</h4>
+                    <small class="text-muted">Pro Jahr</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row text-center mb-3">
+            <div class="col-md-4">
+                <div class="p-2 bg-light rounded">
+                    <small class="text-muted">Soziale Kosten CO2</small>
+                    <div class="fw-bold text-danger">${formatNumber(totalSocialCost, 0)} €</div>
+                    <small class="text-muted">Pro Jahr</small>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-2 bg-light rounded">
+                    <small class="text-muted">EE-Einsparungen</small>
+                    <div class="fw-bold text-success">${formatNumber(totalEESavings, 0)} €</div>
+                    <small class="text-muted">Potentiell</small>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-2 bg-light rounded">
+                    <small class="text-muted">Netto-Nutzen</small>
+                    <div class="fw-bold ${totalNetBenefit >= 0 ? 'text-success' : 'text-danger'}">${formatNumber(totalNetBenefit, 0)} €</div>
+                    <small class="text-muted">Bei Vollausbau</small>
+                </div>
+            </div>
+        </div>
+        
+        <hr>
+        
+        <div class="row text-center">
+            <div class="col-md-6">
+                <h6 class="text-muted">Durchschnittliche Kosten pro Quartier</h6>
+                <div class="fw-bold fs-5 text-primary">${formatNumber(totalEnergyCosts / districtsCount, 0)} €/Jahr</div>
+            </div>
+            <div class="col-md-6">
+                <h6 class="text-muted">Durchschnittliche Emissionen pro Quartier</h6>
+                <div class="fw-bold fs-5 text-warning">${formatNumber(totalCO2Emissions / districtsCount, 0)} t CO2/Jahr</div>
+            </div>
+        </div>
+        
+        <div class="mt-3">
+            <small class="text-muted">
+                <i class="bi bi-info-circle"></i>
+                Berechnung basiert auf aktuellen Energiepreisen und Emissionsfaktoren.
+                EE-Einsparungen zeigen das Potential bei Vollausbau der erneuerbaren Energien.
+            </small>
+        </div>
+    `;
 }
 
 // Export to global scope
