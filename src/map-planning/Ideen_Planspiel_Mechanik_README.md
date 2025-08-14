@@ -205,6 +205,53 @@ IST-Zustand → PLANUNG → PROGNOSE → AUSFÜHRUNG → REALITÄT → ANPASSUNG
 └── Bootstrap Frontend (responsive UI)
 ```
 
+### **Architektur-Transformation: Statisch → Dynamisch**
+
+#### **Problem-Analyse:**
+- **Aktuell**: Statische Datenvisualisierung, einmalige CRUD-Operationen
+- **Ziel**: Zeitbasierte Simulation mit Zustandsübergängen und Ereignissen
+- **Gap**: Fehlende Game Engine, Zustandsmanagement, Zeitmodellierung
+
+#### **Neue Architektur-Ebenen:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    PRESENTATION LAYER                       │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐  │
+│  │   Player UI     │  │   Game Master   │  │  Spectator  │  │
+│  │   Dashboard     │  │     Console     │  │    View     │  │
+│  └─────────────────┘  └─────────────────┘  └─────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+                              │
+┌─────────────────────────────────────────────────────────────┐
+│                      GAME ENGINE LAYER                      │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐  │
+│  │  Round Manager  │  │  Event System   │  │   Player    │  │
+│  │   (Zeit/Phasen) │  │  (Zufälle)      │  │ Management  │  │
+│  └─────────────────┘  └─────────────────┘  └─────────────┘  │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐  │
+│  │ Investment      │  │  Forecast vs    │  │   State     │  │
+│  │    Engine       │  │  Reality Engine │  │  Manager    │  │
+│  └─────────────────┘  └─────────────────┘  └─────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+                              │
+┌─────────────────────────────────────────────────────────────┐
+│                     SIMULATION LAYER                        │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐  │
+│  │   Energy Model  │  │  Economic Model │  │   Climate   │  │
+│  │   (Physik)      │  │  (Kosten/ROI)   │  │   Model     │  │
+│  └─────────────────┘  └─────────────────┘  └─────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+                              │
+┌─────────────────────────────────────────────────────────────┐
+│                       DATA LAYER                           │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐  │
+│  │   Game State    │  │   Time Series   │  │   Config    │  │
+│  │   Database      │  │   Database      │  │   Files     │  │
+│  └─────────────────┘  └─────────────────┘  └─────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
 ### **Erweiterungen für Planspiel:**
 
 #### **Game Engine (Core):**
