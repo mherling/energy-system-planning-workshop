@@ -1,0 +1,422 @@
+# =============================================================================
+# MAßNAHMEN-KATALOG
+# Quartiers- und Stakeholder-spezifische Maßnahmen mit Systemauswirkungen
+# =============================================================================
+
+measures_catalog:
+  # =========================================================================
+  # GEBÄUDE-MAßNAHMEN
+  # =========================================================================
+  
+  residential_renovation:
+    name: "Wohngebäude-Sanierung"
+    category: "building_measures"
+    description: "Umfassende energetische Sanierung von Wohngebäuden"
+    
+    # Quartiers-Eignung (basierend auf Zittau district_types)
+    suitable_quarters:
+      mixed:  # Zentrum, Nord, West
+        priority: 10
+        implementation_potential_pct: 80
+        specific_benefits:
+          - "Hohe Energieeinsparungen durch alte Bausubstanz"
+          - "Wertsteigerung in etablierten Gebieten"
+          - "Soziale Akzeptanz durch Komfortsteigerung"
+      
+      residential:  # Süd, Ost, Vorstadt, Pethau
+        priority: 9
+        implementation_potential_pct: 85
+        specific_benefits:
+          - "Modernisierung von Wohngebäuden"
+          - "Quartiersbild-Verbesserung"
+          - "Direkte Bewohner-Vorteile"
+      
+      commercial:
+        priority: 6
+        implementation_potential_pct: 40
+        specific_benefits:
+          - "Begrenzte Anwendung bei Gewerbeobjekten"
+      
+      industrial:  # Weinau
+        priority: 3
+        implementation_potential_pct: 20
+        specific_benefits:
+          - "Begrenzte Anwendung bei Industrieobjekten"
+    
+    # Stakeholder-Perspektiven
+    stakeholder_views:
+      stadtplaner:
+        support_level: 9
+        key_benefits:
+          - "Beitrag zu Quartierszielen"
+          - "Integrierte Stadtentwicklung"
+          - "Reduktion des Energiebedarfs"
+        concerns:
+          - "Koordination mit anderen Maßnahmen"
+          - "Finanzierung sicherstellen"
+        
+      quartiersentwickler:
+        support_level: 10
+        key_benefits:
+          - "Direkte Wertsteigerung"
+          - "Attraktivität für Mieter/Käufer"
+          - "Energiekosten-Reduktion"
+        concerns:
+          - "Hohe Investitionskosten"
+          - "Mieterhöhungen durch Modernisierung"
+        
+      buergerinitiative:
+        support_level: 6
+        key_benefits:
+          - "Verbesserter Wohnkomfort"
+          - "Niedrigere Energiekosten langfristig"
+        concerns:
+          - "Temporäre Mieterhöhungen"
+          - "Verdrängungseffekte"
+          - "Partizipation bei Planungen"
+    
+    # System-Auswirkungen
+    system_impacts:
+      energy_demand:
+        electricity_change_pct: -5
+        heating_change_pct: -30
+        cooling_change_pct: -20
+        
+      grid_impacts:
+        peak_load_reduction_pct: 15
+        grid_stability_improvement: 3  # Score 1-10
+        
+      economic_effects:
+        investment_volume_per_building: 45000
+        energy_cost_savings_annual: 1200
+        payback_period_years: 12
+        job_creation_local: 2.5  # Vollzeitstellen pro Maßnahme
+        
+      environmental_effects:
+        co2_reduction_tons_annual: 4.2
+        air_quality_improvement: 4
+        noise_reduction: 3
+        
+      social_effects:
+        comfort_improvement: 8
+        health_benefits: 6
+        affordability_impact: -2  # Negative = initial cost increase
+
+  # =========================================================================
+  # ERNEUERBARE ENERGIE-MAßNAHMEN
+  # =========================================================================
+
+  community_solar_park:
+    name: "Quartiers-Solarpark"
+    category: "renewable_energy"
+    description: "Gemeinsamer Solarpark für das gesamte Quartier"
+    
+    suitable_quarters:
+      mixed:  # Zentrum, Nord, West
+        priority: 8
+        implementation_potential_pct: 60
+        specific_benefits:
+          - "Moderne Infrastruktur in gemischten Gebieten"
+          - "Hohe Akzeptanz für innovative Lösungen"
+      
+      industrial:  # Weinau
+        priority: 10
+        implementation_potential_pct: 90
+        specific_benefits:
+          - "Große verfügbare Flächen"
+          - "Hoher Strombedarf vor Ort"
+          - "Wirtschaftliche Vorteile"
+      
+      residential:  # Süd, Ost, Vorstadt, Pethau
+        priority: 6
+        implementation_potential_pct: 40
+        specific_benefits:
+          - "Kompensation für begrenzte Dachflächen"
+      
+      commercial:
+        priority: 7
+        implementation_potential_pct: 50
+        specific_benefits:
+          - "Gewerbliche Nutzung möglich"
+
+    stakeholder_views:
+      stadtwerke:
+        support_level: 8
+        key_benefits:
+          - "Dezentrale Erzeugung nah am Verbrauch"
+          - "Netzentlastung"
+          - "Planbare Erzeugungskapazität"
+        concerns:
+          - "Integration in bestehendes Netz"
+          - "Wirtschaftlichkeit sicherstellen"
+          
+      klimaschutz:
+        support_level: 10
+        key_benefits:
+          - "Hohe CO₂-Einsparungen"
+          - "Sichtbare Energiewende"
+          - "Vorbildcharakter"
+        concerns:
+          - "Flächenkonkurrenz mit anderen Nutzungen"
+          
+      buergerinitiative:
+        support_level: 8
+        key_benefits:
+          - "Günstigere Strompreise"
+          - "Gemeinschaftliches Projekt"
+          - "Lokale Wertschöpfung"
+        concerns:
+          - "Beteiligung an Planungen"
+          - "Faire Kostenverteilung"
+
+    system_impacts:
+      energy_supply:
+        electricity_generation_mwh_annual: 500
+        grid_feed_in_capacity_mw: 0.8
+        
+      grid_impacts:
+        local_supply_rate_increase_pct: 35
+        grid_independence_improvement: 6
+        
+      economic_effects:
+        investment_volume_total: 350000
+        electricity_cost_reduction_annual: 25000
+        payback_period_years: 8
+        job_creation_local: 1.2
+        
+      environmental_effects:
+        co2_reduction_tons_annual: 180
+        land_use_efficiency: 7
+        
+      social_effects:
+        community_engagement: 8
+        energy_awareness_increase: 7
+
+  # =========================================================================
+  # MOBILITÄTS-MAßNAHMEN
+  # =========================================================================
+
+  e_mobility_infrastructure:
+    name: "E-Mobilitäts-Infrastruktur"
+    category: "mobility"
+    description: "Aufbau von Ladeinfrastruktur für Elektrofahrzeuge"
+    
+    suitable_quarters:
+      mixed:  # Zentrum, Nord, West
+        priority: 9
+        implementation_potential_pct: 80
+        specific_benefits:
+          - "Moderne Gebäude mit ausreichend Stellplätzen"
+          - "Hohe Kaufkraft für E-Fahrzeuge"
+      
+      commercial:
+        priority: 8
+        implementation_potential_pct: 75
+        specific_benefits:
+          - "Arbeitsplatz-Laden möglich"
+          - "Flottenumstellung unterstützen"
+      
+      industrial:  # Weinau
+        priority: 7
+        implementation_potential_pct: 60
+        specific_benefits:
+          - "Industrielle Fahrzeugflotten"
+          - "Logistik-Unterstützung"
+      
+      residential:  # Süd, Ost, Vorstadt, Pethau
+        priority: 5
+        implementation_potential_pct: 30
+        specific_benefits:
+          - "Nachholbedarf bei Infrastruktur"
+        challenges:
+          - "Begrenzte Stellplätze"
+          - "Aufwendige Nachrüstung"
+
+    stakeholder_views:
+      stadtplaner:
+        support_level: 8
+        key_benefits:
+          - "Beitrag zur Verkehrswende"
+          - "Luftqualitäts-Verbesserung"
+          - "Zukunftsfähige Quartiersentwicklung"
+        concerns:
+          - "Stromnetz-Belastung"
+          - "Raumplanung für Ladestationen"
+          
+      stadtwerke:
+        support_level: 7
+        key_benefits:
+          - "Neue Geschäftsfelder"
+          - "Lastmanagement-Möglichkeiten"
+        concerns:
+          - "Spitzenlast durch gleichzeitiges Laden"
+          - "Netzausbau-Kosten"
+          
+      buergerinitiative:
+        support_level: 9
+        key_benefits:
+          - "Saubere Luft im Quartier"
+          - "Niedrigere Betriebskosten"
+          - "Moderne Infrastruktur"
+        concerns:
+          - "Zugang für alle Einkommensschichten"
+          - "Lärmbelästigung durch Ladestationen"
+
+    system_impacts:
+      energy_demand:
+        electricity_increase_mwh_annual: 120
+        peak_load_increase_mw: 0.4
+        
+      grid_impacts:
+        load_management_potential: 8
+        smart_charging_benefits: 7
+        
+      economic_effects:
+        investment_volume_total: 150000
+        operating_revenue_annual: 18000
+        payback_period_years: 10
+        
+      environmental_effects:
+        co2_reduction_tons_annual: 45
+        air_quality_improvement: 8
+        noise_reduction: 6
+        
+      social_effects:
+        mobility_improvement: 7
+        modern_image_boost: 8
+
+  # =========================================================================
+  # PARTIZIPATIONS-MAßNAHMEN
+  # =========================================================================
+
+  energy_community:
+    name: "Energiegemeinschaft"
+    category: "participation"
+    description: "Bürger-Energiegemeinschaft mit gemeinsamer Erzeugung und Verbrauch"
+    
+    suitable_quarters:
+      mixed:  # Zentrum, Nord, West
+        priority: 10
+        implementation_potential_pct: 70
+        specific_benefits:
+          - "Diverse Stakeholder für Gemeinschaft"
+          - "Unterschiedliche Lastprofile ergänzen sich"
+      
+      residential:  # Süd, Ost, Vorstadt, Pethau
+        priority: 8
+        implementation_potential_pct: 60
+        specific_benefits:
+          - "Starke Nachbarschaftsstrukturen"
+          - "Hohes Engagement für Gemeinschaftsprojekte"
+      
+      commercial:
+        priority: 5
+        implementation_potential_pct: 30
+        specific_benefits:
+          - "Gewerbliche Teilnahme möglich"
+      
+      industrial:  # Weinau
+        priority: 4
+        implementation_potential_pct: 25
+        specific_benefits:
+          - "Industrielle Beteiligung begrenzt"
+
+    stakeholder_views:
+      buergerinitiative:
+        support_level: 10
+        key_benefits:
+          - "Direkte Partizipation"
+          - "Gemeinschaftliche Entscheidungen"
+          - "Lokale Wertschöpfung"
+        concerns:
+          - "Komplexität der Organisation"
+          
+      klimaschutz:
+        support_level: 9
+        key_benefits:
+          - "Hohe Akzeptanz für Energiewende"
+          - "Bildungseffekte"
+          - "Vorbildfunktion"
+        concerns:
+          - "Koordinationsaufwand"
+          
+      stadtwerke:
+        support_level: 5
+        key_benefits:
+          - "Kundenbindung"
+          - "Lokale Partnerschaften"
+        concerns:
+          - "Konkurrenz zum bestehenden Geschäftsmodell"
+          - "Regulatorische Unsicherheiten"
+
+    system_impacts:
+      energy_management:
+        local_balancing_improvement_pct: 40
+        grid_services_potential: 6
+        
+      economic_effects:
+        investment_volume_total: 80000
+        cost_savings_annual: 15000
+        community_revenue_sharing: 12000
+        
+      social_effects:
+        participation_satisfaction: 10
+        energy_awareness_increase: 9
+        community_cohesion: 8
+
+# =============================================================================
+# MAßNAHMEN-KOMBINATIONEN
+# =============================================================================
+
+measure_combinations:
+  integrated_residential_package:
+    name: "Integriertes Wohn-Quartier Paket"
+    description: "Kombination aus Sanierung, erneuerbaren Energien und E-Mobilität"
+    measures: ["residential_renovation", "community_solar_park", "e_mobility_infrastructure"]
+    
+    synergy_effects:
+      cost_reduction_pct: 15
+      implementation_time_reduction_pct: 20
+      acceptance_increase: 3
+      
+    stakeholder_consensus:
+      high_support: ["stadtplaner", "klimaschutz"]
+      medium_support: ["quartiersentwickler", "buergerinitiative"]
+      concerns: ["stadtwerke"]
+
+  community_energy_transition:
+    name: "Gemeinschaftliche Energiewende"
+    description: "Partizipative Ansätze mit erneuerbaren Energien"
+    measures: ["energy_community", "community_solar_park"]
+    
+    synergy_effects:
+      acceptance_increase: 5
+      local_value_creation_increase_pct: 30
+      
+    stakeholder_consensus:
+      high_support: ["buergerinitiative", "klimaschutz"]
+      medium_support: ["stadtplaner"]
+      concerns: ["stadtwerke", "quartiersentwickler"]
+
+# =============================================================================
+# IMPLEMENTIERUNGS-REIHENFOLGE
+# =============================================================================
+
+implementation_phases:
+  phase_1_foundation:
+    name: "Grundlagen schaffen"
+    duration_years: 1
+    priority_measures: ["residential_renovation", "energy_community"]
+    description: "Effizienz verbessern und Partizipation aufbauen"
+    
+  phase_2_generation:
+    name: "Erzeugung ausbauen"
+    duration_years: 2
+    priority_measures: ["community_solar_park"]
+    description: "Erneuerbare Energien implementieren"
+    
+  phase_3_integration:
+    name: "System integrieren"
+    duration_years: 2
+    priority_measures: ["e_mobility_infrastructure"]
+    description: "Sektorkopplung und intelligente Systeme"

@@ -54,7 +54,7 @@ class ConfigData {
      */
     static async getTechnologyTemplates() {
         try {
-            return await window.apiClient.get('/api/config/technologies');
+            return await window.apiClient.get('/api/config/technology-templates');
         } catch (error) {
             console.error('Fehler beim Laden der Technologie-Templates:', error);
             throw error;

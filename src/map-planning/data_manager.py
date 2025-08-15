@@ -58,7 +58,7 @@ class TechnologyData:
 class QuartierDataManager:
     """Erweiterter Datenmanager für komplexe Energiefluss-Analyse"""
     
-    def __init__(self, config_file: str = "quartier_config.yml", system_config_file: str = "system_config.yml"):
+    def __init__(self, config_file: str = "quarter_config.yml", system_config_file: str = "system_config.yml"):
         self.config_file = Path(__file__).parent / "data" / config_file
         self.system_config_file = Path(__file__).parent / "data" / system_config_file
         self.config = None
@@ -414,14 +414,27 @@ class QuartierDataManager:
         stakeholders = []
         quartier_ids = list(self.config['quartiers'].keys())
         
-        for i, (template_id, template) in enumerate(self.config['stakeholder_templates'].items()):
+        # Try to get stakeholder templates from config
+        stakeholder_templates = self.config.get('stakeholder_templates', {})
+        
+        # If not found in main config, try to load from separate file
+        if not stakeholder_templates:
+            try:
+                from config_manager import get_config_manager
+                cm = get_config_manager('data')
+                stakeholder_templates = cm.get_stakeholder_templates()
+            except Exception as e:
+                logger.warning(f"Could not load stakeholder templates: {e}")
+                stakeholder_templates = {}
+        
+        for i, (template_id, template) in enumerate(stakeholder_templates.items()):
             stakeholder = StakeholderData(
                 id=f"stakeholder_{i+1}",
                 name=f"{template_id.replace('_', ' ').title()}",
                 category=template_id,
                 contact={'email': f"kontakt@{template_id}.de", 'phone': '+49 123 456789'},
-                interests=template['typical_interests'],
-                district_id=quartier_ids[i % len(quartier_ids)],
+                interests=template.get('typical_interests', []),
+                district_id=quartier_ids[i % len(quartier_ids)] if quartier_ids else 'quartier_1',
             )
             stakeholders.append(stakeholder)
         
@@ -431,16 +444,29 @@ class QuartierDataManager:
         """Generiert Technologie-Template-Daten"""
         technologies = []
         
-        for tech_id, tech_config in self.config['technology_templates'].items():
+        # Try to get technology templates from config
+        technology_templates = self.config.get('technology_templates', {})
+        
+        # If not found in main config, try to load from separate file
+        if not technology_templates:
+            try:
+                from config_manager import get_config_manager
+                cm = get_config_manager('data')
+                technology_templates = cm.get_technology_templates()
+            except Exception as e:
+                logger.warning(f"Could not load technology templates: {e}")
+                technology_templates = {}
+        
+        for tech_id, tech_config in technology_templates.items():
             technology = TechnologyData(
                 id=tech_id,
-                name=tech_config['name'],
-                category=tech_config['category'],
-                technology_type=tech_config['technology_type'],
-                parameters=tech_config['parameters'],
-                costs=tech_config['costs'],
-                environmental=tech_config['environmental'],
-                availability=tech_config['availability'],
+                name=tech_config.get('name', tech_id),
+                category=tech_config.get('category', 'other'),
+                technology_type=tech_config.get('technology_type', 'unknown'),
+                parameters=tech_config.get('parameters', {}),
+                costs=tech_config.get('costs', {}),
+                environmental=tech_config.get('environmental', {}),
+                availability=tech_config.get('availability', 'available'),
                 constraints=tech_config.get('constraints', [])
             )
             technologies.append(technology)

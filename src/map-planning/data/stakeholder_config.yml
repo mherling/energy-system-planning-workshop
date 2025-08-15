@@ -1,0 +1,44 @@
+# =============================================================================
+# STAKEHOLDER-KONFIGURATION
+# Definiert alle Stakeholder-Templates und deren Eigenschaften
+# =============================================================================
+
+# Stakeholder-Templates
+stakeholder_templates:  
+  Stadtrat: #ggf. nur als externer Beteiligter
+    typical_interests:
+      - "Stadtplanung"
+      - "Klimaschutz" 
+      - "Bürgerbeteiligung"
+      - "Wirtschaftsförderung"
+
+  Wohnungsbaugesellschaft:
+    typical_interests:
+      - "Wohnraumversorgung"
+      - "Soziale Gerechtigkeit"
+      - "Nachhaltige Stadtentwicklung"
+
+  Stadtwerke Zittau:
+    typical_interests:
+      - "Energieversorgung"
+      - "Netzausbau"
+      - "Versorgungssicherheit"
+      - "Kosteneffizienz"
+  
+  Bürger:
+    typical_interests:
+      - Eigenversorgung
+      - "Erneuerbare Energien"
+      - "Bürgerbeteiligung"
+      - "Lokale Wertschöpfung"
+      - "Umweltschutz"
+      - "Soziale Gerechtigkeit"
+      - "Niedrige Energiekosten"
+      - "Niedrige Mieten"
+
+  Unternehmen:
+    typical_interests:
+      - "Energiekosten"
+      - "Standortattraktivität"
+      - "Versorgungssicherheit"
+      - "Wirtschaftsförderung"

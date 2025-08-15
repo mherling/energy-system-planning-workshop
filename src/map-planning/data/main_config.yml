@@ -1,0 +1,13 @@
+# =============================================================================
+# HAUPT-KONFIGURATION
+# Zentraler Einstiegspunkt für alle Konfigurationsdateien
+# =============================================================================
+
+# Verweis auf die einzelnen Konfigurationsdateien
+configuration_files:
+  system: "system_config.yml"
+  quartiers: "quarter_config.yml"  # Nur die spezifischen Zittau Quartiere
+  technologies: "technology_config.yml"
+  stakeholders: "stakeholder_config.yml"
+  game: "game_config.yml"
+  measures: "measures_catalog.yml"

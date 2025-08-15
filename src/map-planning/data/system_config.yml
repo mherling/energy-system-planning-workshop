@@ -88,9 +88,6 @@ technical_parameters:
   planning_horizon_years: 25
   discount_rate: 0.04
   inflation_rate: 0.02
-  grid_efficiency: 0.95
-  storage_efficiency: 0.85
-  peak_load_factor: 1.3  # Verhältnis Spitzenlast zu Durchschnittslast
   
 # Regionale Parameter für Zittau
 regional_parameters:
@@ -132,27 +129,3 @@ quartier_colors:
   quartier_6: "#FF9FF3"  # Pink - Vorstadt
   quartier_7: "#54A0FF"  # Hellblau - West
   quartier_8: "#5F27CD"  # Lila - Pethau
-
-# Analyse-Parameter
-analysis_settings:
-  energy_balance:
-    include_storage: true
-    seasonal_adjustment: true
-    grid_import_export: true
-    
-  co2_analysis:
-    include_upstream_emissions: true
-    lifecycle_assessment: false
-    carbon_budget_tracking: true
-    
-  economic_analysis:
-    include_externalities: true
-    social_cost_of_carbon: 180  # EUR/t CO2
-    discount_rate_social: 0.02
-    
-  stakeholder_analysis:
-    influence_weighting:
-      high: 3
-      medium: 2
-      low: 1
-    participation_bonus: 1.2

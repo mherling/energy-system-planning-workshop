@@ -1,0 +1,21 @@
+game_settings:
+  # Round Configuration
+  total_rounds: 5
+  years_per_round: 1
+
+  # Random Events
+  event_probability_per_round: 0.7
+  event_intensity_factors:
+    mild: 0.1
+    moderate: 0.3
+    severe: 0.5
+
+  # Budget System
+  initial_budget: 1000000  # EUR
+  budget_increase_per_round: 200000
+
+  # Success Criteria
+  success_criteria:
+    co2_reduction_target_pct: 65
+    renewable_share_target_pct: 80
+    energy_efficiency_improvement_pct: 40

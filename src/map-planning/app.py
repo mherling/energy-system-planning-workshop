@@ -1,6 +1,7 @@
 """
 Bereinigte Grid-basierte Energiesystemplanung für Zittau
 Einfache 4x4 Raster-Struktur mit vordefinierten Daten
+Erweitert um modulare Konfigurationsverwaltung
 """
 
 from fastapi import FastAPI, HTTPException
@@ -11,18 +12,29 @@ import json
 from contextlib import asynccontextmanager
 from database import GridPlanningDatabase
 from data_manager import QuartierDataManager
+from config_manager import get_config_manager
 
 # Database and Data Manager instances
 db = None
 data_manager = None
+config_manager = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global db, data_manager
-    # Initialize database and data manager
+    global db, data_manager, config_manager
+    # Initialize database, data manager, and configuration manager
     db = GridPlanningDatabase("grid_planning.db")
     data_manager = QuartierDataManager()
+    config_manager = get_config_manager("data")
     await db.initialize()
+    
+    # Validate configuration
+    validation = config_manager.validate_configuration()
+    if not validation['is_valid']:
+        print("Configuration validation errors:", validation['errors'])
+    if validation['warnings']:
+        print("Configuration warnings:", validation['warnings'])
+    
     yield
     # Cleanup
     await db.close()
@@ -392,23 +404,252 @@ async def get_quartier_details_config(quartier_key: str):
         "schema": data_manager.config.get("schema", {})
     }
 
+# =============================================================================
+# NEW CONFIGURATION API ENDPOINTS
+# =============================================================================
+
+@app.get("/api/config/stakeholders")
+async def get_stakeholder_configurations():
+    """Get all stakeholder configurations"""
+    global config_manager
+    if not config_manager:
+        raise HTTPException(status_code=500, detail="Configuration manager not initialized")
+    
+    stakeholders = config_manager.get_stakeholder_templates()
+    return {
+        "stakeholder_templates": stakeholders,
+        "stakeholder_count": len(stakeholders)
+    }
+
+@app.get("/api/config/stakeholders/{stakeholder_id}")
+async def get_stakeholder_config(stakeholder_id: str):
+    """Get specific stakeholder configuration"""
+    global config_manager
+    if not config_manager:
+        raise HTTPException(status_code=500, detail="Configuration manager not initialized")
+    
+    stakeholder = config_manager.get_stakeholder_config(stakeholder_id)
+    if not stakeholder:
+        raise HTTPException(status_code=404, detail=f"Stakeholder {stakeholder_id} not found")
+    
+    return {
+        "stakeholder_id": stakeholder_id,
+        "configuration": stakeholder
+    }
+
 @app.get("/api/config/technologies")
+async def get_technology_configurations():
+    """Get all technology configurations"""
+    global config_manager
+    if not config_manager:
+        raise HTTPException(status_code=500, detail="Configuration manager not initialized")
+    
+    technologies = config_manager.get_technology_templates()
+    
+    # Group by category for backwards compatibility
+    categories = {}
+    for tech_id, tech_data in technologies.items():
+        category = tech_data.get('category', 'other')
+        if category not in categories:
+            categories[category] = {}
+        categories[category][tech_id] = tech_data
+    
+    return {
+        "technology_templates": technologies,
+        "technology_categories": categories,
+        "technology_count": len(technologies)
+    }
+
+@app.get("/api/config/technologies/{category}")
+async def get_technology_category(category: str):
+    """Get specific technology category"""
+    global config_manager
+    if not config_manager:
+        raise HTTPException(status_code=500, detail="Configuration manager not initialized")
+    
+    tech_category = config_manager.get_technology_config(category)
+    if not tech_category:
+        raise HTTPException(status_code=404, detail=f"Technology category {category} not found")
+    
+    return {
+        "category": category,
+        "technologies": tech_category
+    }
+
+@app.get("/api/config/measures")
+async def get_measures_catalog():
+    """Get complete measures catalog"""
+    global config_manager
+    if not config_manager:
+        raise HTTPException(status_code=500, detail="Configuration manager not initialized")
+    
+    measures = config_manager.get_measures_catalog()
+    combinations = config_manager.get_measure_combinations()
+    phases = config_manager.get_implementation_phases()
+    
+    return {
+        "measures_catalog": measures,
+        "measure_combinations": combinations,
+        "implementation_phases": phases,
+        "total_measures": len(measures)
+    }
+
+@app.get("/api/config/measures/quarter/{quarter_type}")
+async def get_measures_for_quarter(quarter_type: str):
+    """Get suitable measures for a specific quarter type"""
+    global config_manager
+    if not config_manager:
+        raise HTTPException(status_code=500, detail="Configuration manager not initialized")
+    
+    quarter_types = config_manager.get_quarter_types()
+    if quarter_type not in quarter_types:
+        raise HTTPException(status_code=404, detail=f"Quarter type {quarter_type} not found")
+    
+    suitable_measures = config_manager.get_measures_for_quarter(quarter_type)
+    
+    return {
+        "quarter_type": quarter_type,
+        "quarter_info": quarter_types[quarter_type],
+        "suitable_measures": suitable_measures,
+        "measure_count": len(suitable_measures)
+    }
+
+@app.get("/api/config/quarters")
+async def get_quarter_types():
+    """Get quarter type definitions - returns empty since we only use specific quartiers"""
+    return {
+        "quarter_types": {},
+        "quarter_count": 0,
+        "message": "Using specific Zittau quartiers instead of generic quarter types"
+    }
+
+@app.get("/api/config/quartiers")
+async def get_zittau_quartiers():
+    """Get Zittau quartier configurations"""
+    global config_manager
+    if not config_manager:
+        raise HTTPException(status_code=500, detail="Configuration manager not initialized")
+    
+    quartiers = config_manager.get_zittau_quartiers()
+    templates = config_manager.get_quartier_templates()
+    
+    return {
+        "quartiers": quartiers,
+        "quartier_count": len(quartiers),
+        "district_type_defaults": templates.get('district_type_defaults', {}),
+        "stakeholder_templates": config_manager.get_stakeholder_templates(),
+        "technology_templates": config_manager.get_technology_templates(),
+        "schema": templates.get('schema', {})
+    }
+
+@app.get("/api/config/system")
+async def get_system_parameters():
+    """Get system parameters and game settings"""
+    global config_manager
+    if not config_manager:
+        raise HTTPException(status_code=500, detail="Configuration manager not initialized")
+    
+    system_params = config_manager.get_system_parameters()
+    game_settings = config_manager.get_game_settings()
+    energy_scenarios = config_manager.get_energy_scenarios()
+    
+    return {
+        "system_parameters": system_params,
+        "game_settings": game_settings,
+        "energy_scenarios": energy_scenarios
+    }
+
+@app.post("/api/game/consensus/{measure_id}")
+async def calculate_measure_consensus(measure_id: str, stakeholder_data: dict):
+    """Calculate consensus for a measure among active stakeholders"""
+    global config_manager
+    if not config_manager:
+        raise HTTPException(status_code=500, detail="Configuration manager not initialized")
+    
+    active_stakeholders = stakeholder_data.get('active_stakeholders', [])
+    if not active_stakeholders:
+        raise HTTPException(status_code=400, detail="No active stakeholders provided")
+    
+    # Verify measure exists
+    measures = config_manager.get_measures_catalog()
+    if measure_id not in measures:
+        raise HTTPException(status_code=404, detail=f"Measure {measure_id} not found")
+    
+    consensus = config_manager.calculate_measure_consensus(measure_id, active_stakeholders)
+    
+    # Add detailed stakeholder positions
+    stakeholder_details = {}
+    for stakeholder_id in active_stakeholders:
+        support_info = config_manager.get_stakeholder_measure_support(stakeholder_id, measure_id)
+        stakeholder_details[stakeholder_id] = support_info
+    
+    return {
+        "measure_id": measure_id,
+        "consensus_analysis": consensus,
+        "stakeholder_positions": stakeholder_details
+    }
+
+@app.get("/api/config/technology-templates")
 async def get_technology_templates_config():
-    """Get technology templates from configuration"""
-    if not data_manager.config:
-        raise HTTPException(status_code=500, detail="Quartier configuration not loaded")
+    """Get technology templates from configuration (legacy endpoint)"""
+    global config_manager
+    if config_manager:
+        # Use new configuration system
+        try:
+            technologies = config_manager.get_technology_templates()
+            
+            # Group by categories for old format compatibility
+            categories = set()
+            for tech_data in technologies.values():
+                categories.add(tech_data.get('category', 'other'))
+            
+            return {
+                "technology_templates": technologies,
+                "categories": list(categories),
+                "schema": {}
+            }
+        except Exception as e:
+            print(f"Error in new config system: {e}")
+            # Fallback to old system
+            pass
+    
+    # Fallback to old system
+    if not data_manager or not data_manager.config:
+        # Return minimal structure to prevent frontend errors
+        return {
+            "technology_templates": {},
+            "categories": ["generation", "storage", "conversion", "efficiency"],
+            "schema": {}
+        }
     
     return {
         "technology_templates": data_manager.config.get("technology_templates", {}),
-        "categories": ["generation", "storage", "conversion"],
+        "categories": ["generation", "storage", "conversion", "efficiency"],
         "schema": data_manager.config.get("schema", {})
     }
 
 @app.get("/api/config/stakeholder-templates")
 async def get_stakeholder_templates_config():
-    """Get stakeholder templates from configuration"""
-    if not data_manager.config:
-        raise HTTPException(status_code=500, detail="Quartier configuration not loaded")
+    """Get stakeholder templates from configuration (legacy endpoint)"""
+    global config_manager
+    if config_manager:
+        # Try new configuration system first
+        try:
+            stakeholder_templates = config_manager.get_stakeholder_templates()
+            if stakeholder_templates:
+                return {
+                    "stakeholder_templates": stakeholder_templates,
+                    "schema": {}
+                }
+        except Exception as e:
+            print(f"Error accessing new stakeholder templates: {e}")
+    
+    # Fallback to old system
+    if not data_manager or not data_manager.config:
+        return {
+            "stakeholder_templates": {},
+            "schema": {}
+        }
     
     return {
         "stakeholder_templates": data_manager.config.get("stakeholder_templates", {}),
@@ -418,8 +659,29 @@ async def get_stakeholder_templates_config():
 @app.get("/api/config/energy-scenarios")
 async def get_energy_scenarios_detailed():
     """Get detailed energy price scenarios"""
-    if not data_manager.system_config:
-        raise HTTPException(status_code=500, detail="System configuration not loaded")
+    global config_manager
+    if config_manager:
+        # Use new configuration system
+        try:
+            energy_scenarios = config_manager.get_energy_scenarios()
+            if energy_scenarios:
+                return {
+                    "scenarios": energy_scenarios,
+                    "scenario_count": len(energy_scenarios),
+                    "years": [2025, 2030, 2040, 2050],
+                    "price_types": ["electricity_prices", "gas_prices", "heat_prices", "co2_prices"]
+                }
+        except Exception as e:
+            print(f"Error accessing energy scenarios: {e}")
+    
+    # Fallback to old system
+    if not data_manager or not data_manager.system_config:
+        return {
+            "scenarios": {},
+            "scenario_count": 0,
+            "years": [2025, 2030, 2040, 2050],
+            "price_types": ["electricity_prices", "gas_prices", "heat_prices", "co2_prices"]
+        }
     
     scenarios = data_manager.system_config.get("energy_scenarios", {})
     return {
