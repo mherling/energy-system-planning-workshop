@@ -147,6 +147,44 @@ async function showOverview() {
     }
 }
 
+// Show Planspiel (Game Mode)
+async function showPlanspiel() {
+    const contentContainer = document.getElementById('content');
+    if (contentContainer) {
+        contentContainer.innerHTML = `
+            <div class="row h-100">
+                <!-- Game Interface takes full width -->
+                <div class="col-12 h-100">
+                    <div id="planspiel-container">
+                        <!-- Game UI will be inserted here by GameUIManager -->
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Initialize Game UI if available
+        if (typeof GameUIManager !== 'undefined') {
+            // Clean up any existing game UI
+            if (window.gameUI) {
+                // Reset if needed
+            }
+            
+            // Create new game UI manager
+            window.gameUI = new GameUIManager();
+            console.log('Planspiel-Modus aktiviert');
+        } else {
+            console.error('GameUIManager nicht gefunden');
+            contentContainer.innerHTML = `
+                <div class="alert alert-danger m-3">
+                    <h4>Planspiel nicht verfügbar</h4>
+                    <p>Die Planspiel-Module konnten nicht geladen werden.</p>
+                    <button class="btn btn-primary" onclick="showOverview()">Zurück zur Übersicht</button>
+                </div>
+            `;
+        }
+    }
+}
+
 // Utility function to show toast notifications
 function showToast(message, type = 'info') {
     // Create toast container if it doesn't exist
