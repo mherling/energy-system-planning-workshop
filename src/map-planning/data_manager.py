@@ -41,8 +41,6 @@ class StakeholderData:
     contact: Dict[str, str]
     interests: List[str]
     district_id: str
-    influence_level: str
-    participation_willingness: str
 
 @dataclass
 class TechnologyData:
@@ -424,8 +422,6 @@ class QuartierDataManager:
                 contact={'email': f"kontakt@{template_id}.de", 'phone': '+49 123 456789'},
                 interests=template['typical_interests'],
                 district_id=quartier_ids[i % len(quartier_ids)],
-                influence_level=template['default_influence'],
-                participation_willingness=template['default_participation']
             )
             stakeholders.append(stakeholder)
         

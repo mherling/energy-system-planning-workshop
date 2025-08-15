@@ -151,14 +151,12 @@ class GridPlanningDatabase:
                     stakeholder.category,
                     json.dumps(stakeholder.contact),
                     json.dumps(stakeholder.interests),
-                    stakeholder.district_id,
-                    stakeholder.influence_level,
-                    stakeholder.participation_willingness
+                    stakeholder.district_id
                 ))
             
             cursor.executemany('''
-                INSERT INTO stakeholders (id, name, type, contact, interests, district_id, influence_level, participation_willingness)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO stakeholders (id, name, type, contact, interests, district_id)
+                VALUES (?, ?, ?, ?, ?, ?)
             ''', stakeholders_data)
             
             # Insert technology templates

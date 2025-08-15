@@ -220,8 +220,6 @@ class ConfigManager {
                         ${Object.entries(templates.stakeholder_templates || {}).map(([key, template]) => `
                             <div class="border rounded p-3 mb-3">
                                 <h6 class="text-primary">${key.charAt(0).toUpperCase() + key.slice(1)}</h6>
-                                <p class="mb-2"><strong>Einfluss:</strong> ${template.default_influence}</p>
-                                <p class="mb-2"><strong>Beteiligung:</strong> ${template.default_participation}</p>
                                 <p class="mb-0">
                                     <strong>Typische Interessen:</strong>
                                     ${(template.typical_interests || []).map(interest => 

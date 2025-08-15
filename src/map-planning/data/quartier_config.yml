@@ -538,37 +538,39 @@ quartiers:
       low_density: true
 
 # Stakeholder-Templates
-stakeholder_templates:
-  municipality:
-    default_influence: "high"
-    default_participation: "high"
+stakeholder_templates:  
+  Stadtrat: #ggf. nur als externer Beteiligter
     typical_interests:
       - "Stadtplanung"
       - "Klimaschutz" 
       - "Bürgerbeteiligung"
       - "Wirtschaftsförderung"
-  
-  utility:
-    default_influence: "high"
-    default_participation: "medium"
+
+  Wohnungsbaugesellschaft:
+    typical_interests:
+      - "Wohnraumversorgung"
+      - "Soziale Gerechtigkeit"
+      - "Nachhaltige Stadtentwicklung"
+
+  Stadtwerke Zittau:
     typical_interests:
       - "Energieversorgung"
       - "Netzausbau"
       - "Versorgungssicherheit"
       - "Kosteneffizienz"
   
-  citizen_group:
-    default_influence: "medium"
-    default_participation: "high"
+  Bürger:
     typical_interests:
+      - Eigenversorgung
       - "Erneuerbare Energien"
       - "Bürgerbeteiligung"
       - "Lokale Wertschöpfung"
       - "Umweltschutz"
-  
-  business:
-    default_influence: "medium"
-    default_participation: "medium"
+      - "Soziale Gerechtigkeit"
+      - "Niedrige Energiekosten"
+      - "Niedrige Mieten"
+
+  Unternehmen:
     typical_interests:
       - "Energiekosten"
       - "Standortattraktivität"
