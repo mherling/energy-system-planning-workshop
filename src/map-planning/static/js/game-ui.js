@@ -1,14 +1,30 @@
 /**
- * Game UI Manager für das Energiesystem-Planspiel
- * Steuert die Benutzeroberfläche und Interaktionen
+ * Vereinfachte Game UI für das Energiesystem-Planspiel
+ * Mit Skip-Button und State-Persistierung
  */
 
 class GameUIManager {
     constructor() {
-        this.gameEngine = new GameEngine();
-        this.currentPlayer = null;
+        // Prüfen ob bereits ein GameEngine-State existiert
+        if (window.gameEngineState) {
+            this.gameEngine = window.gameEngineState;
+            console.log('Vorhandenen GameEngine-State wiederhergestellt');
+        } else {
+            this.gameEngine = new GameEngine();
+            window.gameEngineState = this.gameEngine;
+        }
+        
+        this.currentPlayer = {
+            id: 'demo_player',
+            name: 'Demo-Spieler',
+            role: 'stadtplaner'
+        };
+        
         this.setupEventListeners();
         this.initializeUI();
+        
+        // Wenn bereits ein Spiel läuft, UI entsprechend wiederherstellen
+        this.restoreGameState();
     }
 
     setupEventListeners() {
@@ -43,7 +59,6 @@ class GameUIManager {
         // Prüfen ob wir bereits im Planspiel-Container sind
         let container = document.getElementById('planspiel-container');
         if (!container) {
-            // Falls nicht, zur Hauptseite hinzufügen
             container = document.createElement('div');
             container.id = 'planspiel-container';
             const mainContent = document.querySelector('.container-fluid') || document.body;
@@ -58,7 +73,7 @@ class GameUIManager {
                         <div class="card-header">
                             <h2 class="mb-0">🎮 Energiesystem-Planspiel</h2>
                             <div id="game-status" class="mt-2">
-                                <span class="badge badge-secondary me-2">Bereit zum Start</span>
+                                <span class="badge bg-secondary me-2">Bereit zum Start</span>
                             </div>
                         </div>
                         <div class="card-body">
@@ -70,58 +85,38 @@ class GameUIManager {
                 </div>
             </div>
         `;
-        
-        // Container-Inhalt setzen (überschreibt vorherigen Inhalt)
-        const gameContentContainer = container.querySelector('#game-content') || container;
     }
 
     createGameControls() {
         const controlsHTML = `
             <div id="game-controls" class="mb-4">
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-8">
                         <div class="card">
                             <div class="card-header">
-                                <h5>🎯 Spielsteuerung</h5>
+                                <h5>🎯 Planspiel-Steuerung</h5>
                             </div>
                             <div class="card-body">
                                 <button id="start-game-btn" class="btn btn-success me-2">
-                                    <i class="fas fa-play"></i> Spiel starten
+                                    <i class="bi bi-play-fill"></i> Planspiel starten
                                 </button>
                                 <button id="pause-game-btn" class="btn btn-warning me-2" disabled>
-                                    <i class="fas fa-pause"></i> Pausieren
+                                    <i class="bi bi-pause-fill"></i> Pausieren
                                 </button>
                                 <button id="reset-game-btn" class="btn btn-danger">
-                                    <i class="fas fa-redo"></i> Zurücksetzen
+                                    <i class="bi bi-arrow-clockwise"></i> Zurücksetzen
                                 </button>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="card">
                             <div class="card-header">
-                                <h5>👥 Spieler-Setup</h5>
+                                <h5>📊 Spielmodus</h5>
                             </div>
                             <div class="card-body">
-                                <div id="player-setup">
-                                    <div class="input-group mb-2">
-                                        <input type="text" id="player-name" class="form-control" 
-                                               placeholder="Spielername eingeben">
-                                        <select id="player-role" class="form-select">
-                                            <option value="stadtplaner">Stadtplaner*in</option>
-                                            <option value="stadtwerke">Stadtwerke-Manager*in</option>
-                                            <option value="quartiersentwickler">Quartiersentwickler*in</option>
-                                            <option value="klimaschutz">Klimaschutz-Manager*in</option>
-                                            <option value="buergerinitiative">Bürgerinitiative</option>
-                                        </select>
-                                        <button id="add-player-btn" class="btn btn-outline-primary">
-                                            <i class="fas fa-plus"></i>
-                                        </button>
-                                    </div>
-                                    <div id="players-list">
-                                        <!-- Spielerliste wird hier angezeigt -->
-                                    </div>
-                                </div>
+                                <p class="mb-2">Demo-Modus</p>
+                                <small class="text-muted">Flexibles Timing, State-Persistierung</small>
                             </div>
                         </div>
                     </div>
@@ -139,16 +134,22 @@ class GameUIManager {
                 <div class="card border-primary">
                     <div class="card-header bg-primary text-white">
                         <div class="row align-items-center">
-                            <div class="col-md-8">
+                            <div class="col-md-6">
                                 <h4 id="phase-name" class="mb-0">Aktuelle Phase</h4>
                                 <p id="phase-description" class="mb-0 small">Beschreibung der aktuellen Phase</p>
                             </div>
-                            <div class="col-md-4 text-end">
-                                <div id="phase-timer" class="h3 mb-0">00:00</div>
-                                <div class="progress mt-2" style="height: 10px;">
+                            <div class="col-md-3 text-center">
+                                <div id="phase-timer" class="h5 mb-0">00:00</div>
+                                <small class="text-muted">verbleibend</small>
+                                <div class="progress mt-2" style="height: 8px;">
                                     <div id="phase-progress" class="progress-bar" role="progressbar" 
                                          style="width: 0%"></div>
                                 </div>
+                            </div>
+                            <div class="col-md-3 text-end">
+                                <button id="skip-phase-btn" class="btn btn-warning btn-sm">
+                                    <i class="bi bi-skip-end-fill"></i> Weiter
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -209,11 +210,11 @@ class GameUIManager {
                     <div class="col-md-6">
                         <div class="card">
                             <div class="card-header">
-                                <h5>📊 Runde ${this.gameEngine.getGameState().currentRound} - Jahr ${this.gameEngine.getGameState().year}</h5>
+                                <h5 id="round-header">📊 Runde 1 - Jahr 2024</h5>
                             </div>
                             <div class="card-body">
                                 <div id="round-summary">
-                                    <p>Aktuelle Spielsituation und wichtige Kennzahlen werden hier angezeigt.</p>
+                                    <p>Willkommen zum Energiesystem-Planspiel! Klicken Sie auf "Planspiel starten" um zu beginnen.</p>
                                 </div>
                             </div>
                         </div>
@@ -266,78 +267,69 @@ class GameUIManager {
     attachControlEventListeners() {
         // Spiel starten
         document.getElementById('start-game-btn').addEventListener('click', () => {
-            const players = this.getPlayersFromUI();
-            if (players.length > 0) {
-                this.gameEngine.startGame(players);
-            } else {
-                alert('Bitte mindestens einen Spieler hinzufügen!');
+            this.gameEngine.startGame([this.currentPlayer]);
+        });
+
+        // Pausieren
+        document.getElementById('pause-game-btn').addEventListener('click', () => {
+            console.log('Pause-Funktion noch nicht implementiert');
+        });
+
+        // Zurücksetzen
+        document.getElementById('reset-game-btn').addEventListener('click', () => {
+            if (confirm('Spiel wirklich zurücksetzen?')) {
+                delete window.gameEngineState;
+                location.reload();
             }
         });
 
-        // Spieler hinzufügen
-        document.getElementById('add-player-btn').addEventListener('click', () => {
-            this.addPlayerToUI();
-        });
-
-        // Enter-Taste für Spieler hinzufügen
-        document.getElementById('player-name').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.addPlayerToUI();
+        // Skip Phase Button
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'skip-phase-btn' || e.target.closest('#skip-phase-btn')) {
+                this.skipPhase();
             }
         });
     }
 
-    addPlayerToUI() {
-        const nameInput = document.getElementById('player-name');
-        const roleSelect = document.getElementById('player-role');
-        
-        if (nameInput.value.trim()) {
-            const playerId = 'player_' + Date.now();
-            const playerHTML = `
-                <div class="alert alert-info alert-dismissible fade show" data-player-id="${playerId}">
-                    <strong>${nameInput.value}</strong> - ${this.getRoleDisplayName(roleSelect.value)}
-                    <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
-                </div>
-            `;
-            
-            document.getElementById('players-list').insertAdjacentHTML('beforeend', playerHTML);
-            nameInput.value = '';
+    // Zur nächsten Phase wechseln
+    skipPhase() {
+        if (this.gameEngine && typeof this.gameEngine.skipToNextPhase === 'function') {
+            this.gameEngine.skipToNextPhase();
         }
     }
 
-    getPlayersFromUI() {
-        const playerElements = document.querySelectorAll('#players-list .alert');
-        return Array.from(playerElements).map((el, index) => {
-            const text = el.textContent.trim();
-            const [name, role] = text.split(' - ');
-            return {
-                id: el.dataset.playerId,
-                name: name,
-                role: this.getRoleKeyFromDisplayName(role)
-            };
-        });
+    // Spielzustand wiederherstellen
+    restoreGameState() {
+        const gameState = this.gameEngine.getGameState();
+        
+        if (gameState.currentRound > 0) {
+            // Spiel läuft bereits - UI entsprechend anpassen
+            document.getElementById('game-controls').style.display = 'none';
+            document.getElementById('phase-display').style.display = 'block';
+            document.getElementById('player-dashboard').style.display = 'block';
+            
+            // Dashboard aktualisieren
+            this.updatePlayerDashboard();
+            
+            // Round header aktualisieren
+            document.getElementById('round-header').textContent = `📊 Runde ${gameState.currentRound} - Jahr ${gameState.year}`;
+            
+            // Aktuelle Phase anzeigen
+            if (gameState.currentPhase) {
+                this.updatePhaseDisplay(gameState.currentPhase);
+            }
+            
+            console.log('Spielzustand wiederhergestellt:', gameState);
+        }
     }
 
-    getRoleDisplayName(roleKey) {
-        const roleNames = {
-            stadtplaner: 'Stadtplaner*in',
-            stadtwerke: 'Stadtwerke-Manager*in',
-            quartiersentwickler: 'Quartiersentwickler*in',
-            klimaschutz: 'Klimaschutz-Manager*in',
-            buergerinitiative: 'Bürgerinitiative'
-        };
-        return roleNames[roleKey] || roleKey;
-    }
-
-    getRoleKeyFromDisplayName(displayName) {
-        const roleKeys = {
-            'Stadtplaner*in': 'stadtplaner',
-            'Stadtwerke-Manager*in': 'stadtwerke',
-            'Quartiersentwickler*in': 'quartiersentwickler',
-            'Klimaschutz-Manager*in': 'klimaschutz',
-            'Bürgerinitiative': 'buergerinitiative'
-        };
-        return roleKeys[displayName] || displayName;
+    // Phase-Display aktualisieren
+    updatePhaseDisplay(phase) {
+        const phaseConfig = this.gameEngine.phases[phase];
+        if (phaseConfig) {
+            document.getElementById('phase-name').textContent = phaseConfig.name;
+            this.updatePhaseDescription(phase);
+        }
     }
 
     // Event Handler für Game Engine Events
@@ -346,21 +338,25 @@ class GameUIManager {
         document.getElementById('phase-display').style.display = 'block';
         document.getElementById('player-dashboard').style.display = 'block';
         
-        // Ersten Spieler als aktuellen Spieler setzen (für Single-Player Demo)
-        this.currentPlayer = data.players[0];
-        
         this.updateGameStatus('Spiel läuft');
+        console.log('Planspiel gestartet!', data);
     }
 
     onPhaseStarted(data) {
         document.getElementById('phase-name').textContent = data.name;
         this.updatePhaseDescription(data.phase);
         this.startPhaseTimer(data.duration);
+        
+        console.log('Phase gestartet:', data.phase);
     }
 
     onRoundCompleted(data) {
         this.updatePlayerDashboard();
         this.showRoundSummary(data);
+        
+        // Round header aktualisieren
+        const gameState = this.gameEngine.getGameState();
+        document.getElementById('round-header').textContent = `📊 Runde ${gameState.currentRound} - Jahr ${gameState.year}`;
     }
 
     onGameEnded(data) {
@@ -368,51 +364,59 @@ class GameUIManager {
         this.updateGameStatus('Spiel beendet');
     }
 
+    onInvestmentMade(data) {
+        console.log('Investment gemacht:', data);
+    }
+
+    onForecastMade(data) {
+        console.log('Prognose erstellt:', data);
+    }
+
     // Phase-spezifische UI Updates
     showAnalysisPhase(data) {
         document.getElementById('investment-panel').style.display = 'none';
         document.getElementById('event-display').style.display = 'none';
         
-        this.updateRoundSummary('Analysieren Sie die aktuelle Systemsituation und Trends.');
+        this.updateRoundSummary('📊 Analysieren Sie die aktuelle Systemsituation und Trends.');
     }
 
     showPlanningPhase(data) {
         document.getElementById('investment-panel').style.display = 'block';
         this.populateInvestmentOptions(data.investments);
         
-        this.updateRoundSummary('Wählen Sie Ihre Investitionen und erstellen Sie Prognosen.');
+        this.updateRoundSummary('🎯 Wählen Sie Ihre Investitionen und erstellen Sie Prognosen.');
     }
 
     showEventsPhase(data) {
         document.getElementById('event-display').style.display = 'block';
         this.displayEvents(data.events);
         
-        this.updateRoundSummary('Unerwartete Ereignisse treten ein...');
+        this.updateRoundSummary('⚡ Unerwartete Ereignisse treten ein...');
     }
 
     showRealityPhase(data) {
         this.displayRealityVsForecast(data);
-        this.updateRoundSummary('Die Realität weicht von Ihren Prognosen ab.');
+        this.updateRoundSummary('📈 Die Realität weicht von Ihren Prognosen ab.');
     }
 
     showEvaluationPhase(data) {
         this.displayEvaluation(data);
-        this.updateRoundSummary('Bewerten Sie Ihre Performance und lernen Sie aus den Erfahrungen.');
+        this.updateRoundSummary('🎓 Bewerten Sie Ihre Performance und lernen Sie aus den Erfahrungen.');
     }
 
     // UI Helper Methods
     updateGameStatus(status) {
         document.getElementById('game-status').innerHTML = 
-            `<span class="badge badge-success">${status}</span>`;
+            `<span class="badge bg-success">${status}</span>`;
     }
 
     updatePhaseDescription(phase) {
         const descriptions = {
-            analysis: 'Studieren Sie IST-Zustand und Trends (3-5 Min)',
-            planning: 'Treffen Sie Investitionsentscheidungen (5-7 Min)',
-            events: 'Zufallsereignisse treffen ein (1-2 Min)',
-            reality: 'Vergleich: Prognose vs. Realität (2-3 Min)',
-            evaluation: 'Performance bewerten und lernen (3-5 Min)'
+            analysis: 'Studieren Sie IST-Zustand und Trends (max. 5 Min)',
+            planning: 'Treffen Sie Investitionsentscheidungen (max. 7 Min)',
+            events: 'Zufallsereignisse treffen ein (max. 2 Min)',
+            reality: 'Vergleich: Prognose vs. Realität (max. 3 Min)',
+            evaluation: 'Performance bewerten und lernen (max. 5 Min)'
         };
         
         document.getElementById('phase-description').textContent = descriptions[phase] || '';
@@ -447,7 +451,7 @@ class GameUIManager {
         investments.forEach(investment => {
             const investmentCard = `
                 <div class="col-md-6 col-lg-4 mb-3">
-                    <div class="card h-100">
+                    <div class="card h-100 investment-card">
                         <div class="card-header">
                             <h6 class="mb-0">${investment.name}</h6>
                         </div>
@@ -467,7 +471,7 @@ class GameUIManager {
                             </div>
                             <button class="btn btn-primary btn-sm w-100" 
                                     onclick="gameUI.makeInvestment('${investment.id}', ${JSON.stringify(investment).replace(/"/g, '&quot;')})">
-                                Investieren
+                                💰 Investieren
                             </button>
                         </div>
                     </div>
@@ -478,8 +482,9 @@ class GameUIManager {
     }
 
     makeInvestment(investmentId, investment) {
-        if (this.currentPlayer && this.gameEngine.makeInvestment(this.currentPlayer.id, investment)) {
+        if (this.gameEngine.makeInvestment(this.currentPlayer.id, investment)) {
             this.updatePlayerDashboard();
+            console.log('Investment gemacht:', investment.name);
         } else {
             alert('Unzureichendes Budget für diese Investition!');
         }
@@ -507,16 +512,16 @@ class GameUIManager {
     }
 
     updatePlayerDashboard() {
-        if (!this.currentPlayer) return;
+        const gameState = this.gameEngine.getGameState();
+        const player = gameState.players.find(p => p.id === this.currentPlayer.id);
         
-        const player = this.gameEngine.getGameState().players.find(p => p.id === this.currentPlayer.id);
         if (player) {
             document.getElementById('current-budget').textContent = `€ ${player.budget.toLocaleString()}`;
             
             const invested = player.investments.reduce((sum, inv) => sum + inv.cost, 0);
             document.getElementById('invested-amount').textContent = `€ ${invested.toLocaleString()}`;
             
-            // Placeholder-Werte für Performance-Kennzahlen
+            // Vereinfachte Performance-Kennzahlen
             document.getElementById('co2-reduction').textContent = `${(player.investments.length * 5)}%`;
             document.getElementById('cost-savings').textContent = `€ ${(player.investments.length * 1000).toLocaleString()}`;
             document.getElementById('resilience-score').textContent = `${Math.min(10, player.investments.length)}/10`;
@@ -528,33 +533,44 @@ class GameUIManager {
     }
 
     displayRealityVsForecast(data) {
-        // Hier würde der Vergleich zwischen Prognose und Realität angezeigt
-        this.updateRoundSummary('Ihre Prognosen werden mit der eingetretenen Realität verglichen...');
+        this.updateRoundSummary('📊 Ihre Prognosen werden mit der eingetretenen Realität verglichen...');
     }
 
     displayEvaluation(data) {
-        // Hier würde die Performance-Bewertung angezeigt
-        this.updateRoundSummary('Ihre Performance wird ausgewertet...');
+        this.updateRoundSummary('📈 Ihre Performance wird ausgewertet...');
     }
 
     showRoundSummary(data) {
-        // Hier würde eine Zusammenfassung der Runde angezeigt
         console.log('Runde abgeschlossen:', data);
     }
 
     showFinalResults(data) {
-        // Hier würden die finalen Ergebnisse angezeigt
-        alert('Spiel beendet! Finale Ergebnisse werden angezeigt...');
+        this.updateRoundSummary('🎉 Spiel beendet! Herzlichen Glückwunsch!');
+        
+        setTimeout(() => {
+            alert('Spiel beendet! Finale Ergebnisse:\n\n' + 
+                  'Investitionen: ' + data.finalResults.totalInvestments + '\n' +
+                  'CO₂-Reduktion: ' + data.finalResults.co2Reduction + '%\n' +
+                  'Kosteneinsparungen: €' + data.finalResults.costSavings);
+        }, 1000);
     }
 }
 
-// Game UI initialisieren wenn die Seite geladen ist
+// Game UI initialisieren
 let gameUI;
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Prüfen ob wir auf der richtigen Seite sind
-    if (window.location.pathname.includes('map-planning') || document.getElementById('map-container')) {
-        gameUI = new GameUIManager();
+    // Prüfen ob wir im Planspiel-Modus sind
+    if (window.location.pathname.includes('map-planning') || document.getElementById('planspiel-container')) {
+        // Warten bis alle anderen Scripts geladen sind
+        setTimeout(() => {
+            if (typeof GameEngine !== 'undefined') {
+                gameUI = new GameUIManager();
+                console.log('Planspiel UI initialisiert');
+            } else {
+                console.error('GameEngine nicht gefunden');
+            }
+        }, 100);
     }
 });
 

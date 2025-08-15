@@ -63,7 +63,7 @@ class GameEngine {
             duration: phase.duration
         });
 
-        // Timer für Phase
+        // Timer für Phase (nur als Maximum, kann manuell übersprungen werden)
         if (this.phaseTimer) {
             clearTimeout(this.phaseTimer);
         }
@@ -90,6 +90,14 @@ class GameEngine {
                 this.initEvaluationPhase();
                 break;
         }
+    }
+
+    // Manuell zur nächsten Phase wechseln
+    skipToNextPhase() {
+        if (this.phaseTimer) {
+            clearTimeout(this.phaseTimer);
+        }
+        this.completePhase();
     }
 
     // Phase abschließen
