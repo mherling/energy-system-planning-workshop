@@ -108,31 +108,11 @@ class ConfigManager {
             console.log('System config loaded:', systemConfig);
             this.systemConfig = systemConfig;
             
-            // Render system parameters
+            // Render system parameters (now includes scenarios from systemConfig)
             console.log('Rendering system parameters...');
             const html = window.ConfigView.renderSystemParameters(systemConfig);
             container.innerHTML = html;
             
-            // Load energy scenarios
-            console.log('Loading energy scenarios...');
-            const scenarios = await window.ConfigData.getEnergyScenarios();
-            console.log('Loaded energy scenarios:', scenarios);
-            const scenariosHtml = window.ConfigView.renderEnergyScenarios(scenarios);
-            console.log('Rendered scenarios HTML length:', scenariosHtml.length);
-            console.log('Rendered scenarios HTML preview:', scenariosHtml.substring(0, 200));
-            
-            // Add scenarios section
-            const scenariosSection = `
-                <hr class="my-4">
-                <div class="mb-4">
-                    <h4 class="text-primary mb-3">
-                        <i class="fas fa-chart-line me-2"></i>Energiepreis-Szenarien
-                    </h4>
-                    ${scenariosHtml}
-                </div>
-            `;
-            container.innerHTML += scenariosSection;
-            console.log('Final container HTML length:', container.innerHTML.length);
             console.log('System tab loading completed');
             
         } catch (error) {

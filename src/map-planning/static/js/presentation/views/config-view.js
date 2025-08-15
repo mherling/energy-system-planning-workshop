@@ -274,67 +274,74 @@ class ConfigView {
     }
     
     /**
-     * Rendert System-Parameter Dashboard
+     * Rendert System-Parameter Dashboard mit allen Daten aus system_config.yml
      * @param {Object} systemConfig - System-Konfiguration
+     * @param {Object} scenarios - Energiepreis-Szenarien (optional, wird aus systemConfig verwendet wenn nicht vorhanden)
      * @returns {string} HTML für System-Parameter
      */
-    static renderSystemParameters(systemConfig) {
-        const { regional_parameters, emission_factors, technical_parameters, analysis_settings } = systemConfig;
+    static renderSystemParameters(systemConfig, scenarios = null) {
+        const { regional_parameters, emission_factors, technical_parameters, energy_scenarios } = systemConfig;
+        
+        // Verwende Szenarien aus systemConfig wenn nicht separat übergeben
+        const scenariosToRender = scenarios || energy_scenarios;
         
         return `
             <div class="row">
-                <!-- Regionale Parameter -->
-                <div class="col-lg-6 mb-4">
-                    <div class="card h-100">
-                        <div class="card-header">
-                            <h6 class="mb-0">
-                                <i class="bi bi-geo-alt me-2"></i>Regionale Parameter (Zittau)
-                            </h6>
+                <!-- Linke Spalte: Regionale Parameter, Technische Parameter, CO2-Faktoren -->
+                <div class="col-lg-6">
+                    <!-- Regionale Parameter -->
+                    <div class="mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="bi bi-geo-alt me-2"></i>Regionale Parameter (Zittau)
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                ${this.renderRegionalParameters(regional_parameters)}
+                            </div>
                         </div>
-                        <div class="card-body">
-                            ${this.renderRegionalParameters(regional_parameters)}
+                    </div>
+                    
+                    <!-- Technische Parameter -->
+                    <div class="mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="bi bi-gear me-2"></i>Technische Parameter
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                ${this.renderSystemTechnicalParameters(technical_parameters)}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- CO2-Emissionsfaktoren -->
+                    <div class="mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="bi bi-cloud me-2"></i>CO₂-Emissionsfaktoren
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                ${this.renderEmissionFactors(emission_factors)}
+                            </div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Emissionsfaktoren -->
-                <div class="col-lg-6 mb-4">
+                <!-- Rechte Spalte: Energiepreis-Szenarien -->
+                <div class="col-lg-6">
                     <div class="card h-100">
                         <div class="card-header">
                             <h6 class="mb-0">
-                                <i class="bi bi-cloud me-2"></i>CO₂-Emissionsfaktoren
+                                <i class="bi bi-graph-up me-2"></i>Energiepreis-Szenarien
                             </h6>
                         </div>
                         <div class="card-body">
-                            ${this.renderEmissionFactors(emission_factors)}
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Technische Parameter -->
-                <div class="col-lg-6 mb-4">
-                    <div class="card h-100">
-                        <div class="card-header">
-                            <h6 class="mb-0">
-                                <i class="bi bi-gear me-2"></i>Technische Parameter
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            ${this.renderTechnicalParameters(technical_parameters)}
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Analyse-Einstellungen -->
-                <div class="col-lg-6 mb-4">
-                    <div class="card h-100">
-                        <div class="card-header">
-                            <h6 class="mb-0">
-                                <i class="bi bi-graph-up me-2"></i>Analyse-Einstellungen
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            ${this.renderAnalysisSettings(analysis_settings)}
+                            ${this.renderEnergyScenarios(scenariosToRender)}
                         </div>
                     </div>
                 </div>
@@ -395,6 +402,361 @@ class ConfigView {
             <div class="row">
                 ${scenarioCards}
             </div>
+            
+            <!-- Vergleichsdiagramm -->
+            <div class="mt-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="bi bi-bar-chart-line me-2"></i>Preisentwicklung im Vergleich
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="price-comparison-chart">
+                            ${this.renderPriceComparisonChart(scenarioData)}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    /**
+     * Rendert ein Vergleichsdiagramm für alle Energiepreis-Szenarien
+     * @param {Object} scenarioData - Szenarien-Daten
+     * @returns {string} HTML und JavaScript für das Vergleichsdiagramm
+     */
+    static renderPriceComparisonChart(scenarioData) {
+        console.log('Creating price comparison chart with data:', scenarioData);
+        
+        // Korrekte Feldnamen entsprechend der YAML-Struktur
+        const years = [2025, 2030, 2040, 2050];
+        const energyTypes = [
+            { key: 'electricity_prices', label: 'Strom', unit: '€/kWh' },
+            { key: 'gas_prices', label: 'Gas', unit: '€/kWh' },
+            { key: 'heat_prices', label: 'Heizöl/Fernwärme', unit: '€/kWh' }
+        ];
+        
+        // Definiere eindeutige Farben für jede Szenario-Energieart-Kombination
+        const colorPalette = [
+            '#1f77b4', // Blau
+            '#ff7f0e', // Orange
+            '#2ca02c', // Grün
+            '#d62728', // Rot
+            '#9467bd', // Lila
+            '#8c564b', // Braun
+            '#e377c2', // Pink
+            '#7f7f7f', // Grau
+            '#bcbd22'  // Olive
+        ];
+        
+        // Erstelle Chart-Daten mit individuellen Farben
+        const chartData = [];
+        let colorIndex = 0;
+        
+        Object.entries(scenarioData).forEach(([scenarioKey, scenario]) => {
+            energyTypes.forEach(energyType => {
+                if (scenario[energyType.key]) {
+                    const dataPoints = years.map(year => ({
+                        year: year,
+                        price: scenario[energyType.key][year] || 0
+                    }));
+                    
+                    chartData.push({
+                        scenario: scenario.name || scenarioKey,
+                        energyType: energyType.label,
+                        color: colorPalette[colorIndex % colorPalette.length],
+                        data: dataPoints
+                    });
+                    colorIndex++;
+                }
+            });
+        });
+        
+        console.log('Processed chart data:', chartData);
+        
+        if (chartData.length === 0) {
+            return `
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Keine Daten für Preisvergleich verfügbar
+                </div>
+            `;
+        }
+        
+        // SVG-Dimensionen - angepasst für bessere Einbettung
+        const svgWidth = 100; // Prozent-basiert
+        const svgHeight = 400;
+        const svgWidthPx = 720; // Pixel für Berechnungen
+        const margin = { top: 30, right: 160, bottom: 60, left: 70 };
+        const chartWidth = svgWidthPx - margin.left - margin.right;
+        const chartHeight = svgHeight - margin.top - margin.bottom;
+        
+        // Finde Min/Max-Werte für Skalierung
+        const allPrices = chartData.flatMap(series => series.data.map(d => d.price));
+        const minPrice = Math.min(...allPrices) * 0.95; // Etwas Puffer
+        const maxPrice = Math.max(...allPrices) * 1.05; // Etwas Puffer
+        const priceRange = maxPrice - minPrice;
+        
+        // Hilfsfunktionen für Koordinaten
+        const getX = (yearIndex) => margin.left + (yearIndex / (years.length - 1)) * chartWidth;
+        const getY = (price) => margin.top + chartHeight - ((price - minPrice) / priceRange) * chartHeight;
+        
+        // SVG-Pfade für jede Datenreihe erstellen
+        const svgPaths = chartData.map((series, index) => {
+            const pathData = series.data.map((d, i) => {
+                const x = getX(i);
+                const y = getY(d.price);
+                return i === 0 ? `M ${x} ${y}` : `L ${x} ${y}`;
+            }).join(' ');
+            
+            const circles = series.data.map((d, i) => {
+                const x = getX(i);
+                const y = getY(d.price);
+                return `
+                    <circle 
+                        cx="${x}" 
+                        cy="${y}" 
+                        r="4" 
+                        fill="${series.color}" 
+                        stroke="white" 
+                        stroke-width="2"
+                        class="chart-point"
+                        data-year="${d.year}" 
+                        data-price="${d.price.toFixed(3)}" 
+                        data-series="${series.scenario} - ${series.energyType}"
+                        style="cursor: pointer;"
+                    />
+                `;
+            }).join('');
+            
+            return `
+                <path 
+                    d="${pathData}" 
+                    fill="none" 
+                    stroke="${series.color}" 
+                    stroke-width="2.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                />
+                ${circles}
+            `;
+        }).join('');
+        
+        // X-Achsen-Labels
+        const xAxisLabels = years.map((year, i) => {
+            const x = getX(i);
+            return `
+                <text x="${x}" y="${margin.top + chartHeight + 20}" text-anchor="middle" font-size="11" fill="#666">${year}</text>
+                <line x1="${x}" y1="${margin.top + chartHeight}" x2="${x}" y2="${margin.top + chartHeight + 4}" stroke="#ccc"/>
+            `;
+        }).join('');
+        
+        // Y-Achsen-Labels
+        const yTicks = 6;
+        const yAxisLabels = Array.from({length: yTicks}, (_, i) => {
+            const value = minPrice + (priceRange / (yTicks - 1)) * i;
+            const y = getY(value);
+            return `
+                <text x="${margin.left - 10}" y="${y + 3}" text-anchor="end" font-size="10" fill="#666">${value.toFixed(3)}</text>
+                <line x1="${margin.left - 5}" y1="${y}" x2="${margin.left}" y2="${y}" stroke="#ccc"/>
+                <line x1="${margin.left}" y1="${y}" x2="${margin.left + chartWidth}" y2="${y}" stroke="#f0f0f0" stroke-width="1"/>
+            `;
+        }).join('');
+        
+        // Legende - gruppiert nach Szenarien
+        const scenarios = [...new Set(chartData.map(series => series.scenario))];
+        const uniqueEnergyTypes = [...new Set(chartData.map(series => series.energyType))];
+        
+        let legendY = 35;
+        const legend = [];
+        
+        // Legende Header
+        legend.push(`<text x="${svgWidthPx - 150}" y="25" font-weight="bold" font-size="12" fill="#333">Szenarien:</text>`);
+        
+        scenarios.forEach((scenario, scenarioIndex) => {
+            // Szenario-Titel
+            legend.push(`<text x="${svgWidthPx - 150}" y="${legendY}" font-weight="bold" font-size="10" fill="#555">${scenario}</text>`);
+            legendY += 15;
+            
+            // Energiearten für dieses Szenario
+            chartData.filter(series => series.scenario === scenario).forEach((series, typeIndex) => {
+                legend.push(`
+                    <g>
+                        <line x1="${svgWidthPx - 145}" y1="${legendY}" x2="${svgWidthPx - 125}" y2="${legendY}" stroke="${series.color}" stroke-width="2.5"/>
+                        <circle cx="${svgWidthPx - 135}" cy="${legendY}" r="3" fill="${series.color}" stroke="white" stroke-width="1"/>
+                        <text x="${svgWidthPx - 120}" y="${legendY + 3}" font-size="9" fill="#666">${series.energyType}</text>
+                    </g>
+                `);
+                legendY += 12;
+            });
+            
+            legendY += 5; // Extra Abstand zwischen Szenarien
+        });
+        
+        const legendContent = legend.join('');
+        
+        return `
+            <svg width="100%" height="${svgHeight}" viewBox="0 0 ${svgWidthPx} ${svgHeight}" style="background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                <!-- Hintergrund -->
+                <rect x="${margin.left}" y="${margin.top}" width="${chartWidth}" height="${chartHeight}" fill="white"/>
+                
+                <!-- Grid Lines -->
+                ${yAxisLabels}
+                
+                <!-- Achsen -->
+                <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${margin.top + chartHeight}" stroke="#333" stroke-width="1.5"/>
+                <line x1="${margin.left}" y1="${margin.top + chartHeight}" x2="${margin.left + chartWidth}" y2="${margin.top + chartHeight}" stroke="#333" stroke-width="1.5"/>
+                
+                <!-- Datenlinien -->
+                ${svgPaths}
+                
+                <!-- X-Achsen-Labels -->
+                ${xAxisLabels}
+                
+                <!-- Titel und Achsenbeschriftungen -->
+                <text x="${svgWidthPx/2}" y="18" text-anchor="middle" font-weight="bold" font-size="14" fill="#333">Energiepreisentwicklung im Vergleich</text>
+                <text x="${margin.left + chartWidth/2}" y="${svgHeight - 15}" text-anchor="middle" font-size="12" fill="#666">Jahr</text>
+                <text x="20" y="${margin.top + chartHeight/2}" text-anchor="middle" font-size="12" fill="#666" transform="rotate(-90, 20, ${margin.top + chartHeight/2})">Preis (€/kWh)</text>
+                
+                <!-- Legende -->
+                ${legendContent}
+            </svg>
+            
+            <div class="mt-2">
+                <small class="text-muted">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Bewegen Sie die Maus über das Diagramm oder die Datenpunkte für Details zu den Preisen.
+                </small>
+            </div>
+            
+            <script>
+                // Einfache und robuste Tooltip-Funktionalität
+                (function() {
+                    // Tooltip erstellen
+                    function createTooltip() {
+                        let tooltip = document.getElementById('price-chart-tooltip');
+                        if (!tooltip) {
+                            tooltip = document.createElement('div');
+                            tooltip.id = 'price-chart-tooltip';
+                            tooltip.style.cssText = \`
+                                position: absolute;
+                                background: rgba(0,0,0,0.9);
+                                color: white;
+                                padding: 10px 14px;
+                                border-radius: 6px;
+                                font-size: 12px;
+                                pointer-events: none;
+                                z-index: 1000;
+                                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                                white-space: nowrap;
+                                display: none;
+                                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                            \`;
+                            document.body.appendChild(tooltip);
+                        }
+                        return tooltip;
+                    }
+                    
+                    // Tooltip anzeigen
+                    function showTooltip(e, content) {
+                        const tooltip = createTooltip();
+                        tooltip.innerHTML = content;
+                        tooltip.style.display = 'block';
+                        tooltip.style.left = (e.pageX + 15) + 'px';
+                        tooltip.style.top = (e.pageY - 10) + 'px';
+                    }
+                    
+                    // Tooltip verstecken
+                    function hideTooltip() {
+                        const tooltip = document.getElementById('price-chart-tooltip');
+                        if (tooltip) {
+                            tooltip.style.display = 'none';
+                        }
+                    }
+                    
+                    // Datenpunkt-Hover
+                    const points = document.querySelectorAll('.chart-point');
+                    points.forEach(point => {
+                        point.addEventListener('mouseenter', function(e) {
+                            const series = this.getAttribute('data-series');
+                            const year = this.getAttribute('data-year');
+                            const price = this.getAttribute('data-price');
+                            
+                            const content = \`
+                                <div style="font-weight: bold; margin-bottom: 4px; color: #fff;">\${series}</div>
+                                <div style="margin-bottom: 2px;">📅 Jahr: \${year}</div>
+                                <div style="margin-bottom: 2px;">💰 Preis: \${price} €/kWh</div>
+                                <div style="font-size: 10px; color: #ccc; margin-top: 4px;">Detailansicht</div>
+                            \`;
+                            
+                            showTooltip(e, content);
+                            
+                            // Highlight Punkt
+                            this.setAttribute('r', '6');
+                            this.style.filter = 'drop-shadow(0 0 4px rgba(255,255,255,0.8))';
+                        });
+                        
+                        point.addEventListener('mouseleave', function() {
+                            hideTooltip();
+                            
+                            // Reset Punkt
+                            this.setAttribute('r', '4');
+                            this.style.filter = 'none';
+                        });
+                        
+                        point.addEventListener('mousemove', function(e) {
+                            // Tooltip Position aktualisieren bei Bewegung
+                            const tooltip = document.getElementById('price-chart-tooltip');
+                            if (tooltip && tooltip.style.display === 'block') {
+                                tooltip.style.left = (e.pageX + 15) + 'px';
+                                tooltip.style.top = (e.pageY - 10) + 'px';
+                            }
+                        });
+                    });
+                    
+                    // Linien-Hover (einfache Version)
+                    const paths = document.querySelectorAll('path[stroke]');
+                    paths.forEach(path => {
+                        path.addEventListener('mouseenter', function(e) {
+                            const content = \`
+                                <div style="font-weight: bold; margin-bottom: 4px; color: #fff;">Preisentwicklung</div>
+                                <div style="font-size: 10px; color: #ccc;">Bewegen Sie die Maus über die Datenpunkte für Details</div>
+                            \`;
+                            
+                            showTooltip(e, content);
+                            
+                            // Highlight Linie
+                            this.style.strokeWidth = '3.5';
+                            this.style.filter = 'drop-shadow(0 0 2px rgba(255,255,255,0.5))';
+                        });
+                        
+                        path.addEventListener('mouseleave', function() {
+                            hideTooltip();
+                            
+                            // Reset Linie
+                            this.style.strokeWidth = '2.5';
+                            this.style.filter = 'none';
+                        });
+                        
+                        path.addEventListener('mousemove', function(e) {
+                            // Tooltip Position aktualisieren
+                            const tooltip = document.getElementById('price-chart-tooltip');
+                            if (tooltip && tooltip.style.display === 'block') {
+                                tooltip.style.left = (e.pageX + 15) + 'px';
+                                tooltip.style.top = (e.pageY - 10) + 'px';
+                            }
+                        });
+                    });
+                    
+                    // Globales Cleanup
+                    document.addEventListener('click', function(e) {
+                        if (!e.target.closest('svg')) {
+                            hideTooltip();
+                        }
+                    });
+                })();
+            </script>
         `;
     }
     
@@ -697,6 +1059,76 @@ class ConfigView {
                         <dd class="col-sm-6">${stakeholderAnalysis.participation_bonus || 'N/A'}</dd>
                     </dl>
                 </div>
+            </div>
+        `;
+    }
+    
+    static renderNewTechnicalParameters(techParams) {
+        if (!techParams || Object.keys(techParams).length === 0) {
+            return '<div class="alert alert-info">Keine technischen Parameter aus der neuen Konfiguration verfügbar</div>';
+        }
+        
+        // Check if we have technology categories data
+        if (techParams.categories) {
+            const categories = techParams.categories;
+            const categoryCards = Object.entries(categories).map(([key, category]) => {
+                return `
+                    <div class="mb-3">
+                        <h6 class="text-primary">${category.name || key}</h6>
+                        <p class="text-muted small">${category.description || 'Keine Beschreibung verfügbar'}</p>
+                    </div>
+                `;
+            }).join('');
+            
+            return `
+                <div class="mb-3">
+                    <h6 class="text-muted mb-2">🔧 Technologie-Kategorien</h6>
+                    ${categoryCards}
+                </div>
+                <small class="text-muted">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Technologie-Parameter werden aus der technology_config.yml geladen
+                </small>
+            `;
+        }
+        
+        // Fallback for other technical parameters structure
+        return `
+            <div class="alert alert-info">
+                <i class="bi bi-gear me-2"></i>
+                <strong>Technische Parameter</strong><br>
+                Die Parameter werden aus der neuen Konfigurationsstruktur geladen.
+            </div>
+        `;
+    }
+    
+    /**
+     * Rendert technische Parameter aus system_config.yml
+     * @param {Object} techParams - Technische Parameter aus system_config
+     * @returns {string} HTML für technische Parameter
+     */
+    static renderSystemTechnicalParameters(techParams) {
+        if (!techParams || Object.keys(techParams).length === 0) {
+            return '<div class="alert alert-warning">Keine technischen Parameter verfügbar</div>';
+        }
+        
+        return `
+            <dl class="row mb-0">
+                <dt class="col-sm-8">Planungshorizont:</dt>
+                <dd class="col-sm-4">${techParams.planning_horizon_years || 'N/A'} Jahre</dd>
+                
+                <dt class="col-sm-8">Diskontierungssatz:</dt>
+                <dd class="col-sm-4">${techParams.discount_rate ? (techParams.discount_rate * 100).toFixed(1) + '%' : 'N/A'}</dd>
+                
+                <dt class="col-sm-8">Inflationsrate:</dt>
+                <dd class="col-sm-4">${techParams.inflation_rate ? (techParams.inflation_rate * 100).toFixed(1) + '%' : 'N/A'}</dd>
+            </dl>
+            
+            <div class="mt-3">
+                <small class="text-muted">
+                    <i class="bi bi-gear me-1"></i>
+                    Allgemeine Parameter für die Energiesystemplanung
+                </small>
             </div>
         `;
     }
